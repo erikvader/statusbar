@@ -1,4 +1,5 @@
-use std::future::Future;
+use futures::stream::FuturesUnordered;
+use futures::stream::StreamExt;
 use nix::unistd::{mkfifo, unlink};
 use nix::sys::stat;
 use nix::Error::Sys;
@@ -15,6 +16,7 @@ use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader, AsyncWriteExt};
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::process::Command;
+use tokio::sync::oneshot;
 use sysinfo::{SystemExt,ProcessorExt};
 use itertools::Itertools;
 use core::time::Duration;
@@ -22,14 +24,29 @@ use async_trait::async_trait;
 
 // TODO: göra en trait kanske för att skapa stränger att skicka till dzen?
 // TODO: tänk på hur programmet ska startas. Alltid daemoniza? Hantera SIGHUP?
-// TODO: hantera att en arbiträr task kan krascha. Få alla tasks att returna ExitReason
-// https://docs.rs/futures/0.3.4/futures/stream/struct.FuturesUnordered.html
 
+#[derive(PartialEq,Eq,Clone,Copy,Debug)]
 enum ExitReason {
     Signal,
     Error,
     SignalError,
     Normal
+}
+
+impl ExitReason {
+    fn combine(self, other: Self) -> Self {
+        fn rec(me: ExitReason, other: ExitReason, second: bool) -> ExitReason {
+            match (me, other) {
+                (ExitReason::Error, ExitReason::Signal) => ExitReason::SignalError,
+                (ExitReason::SignalError, _) => ExitReason::SignalError,
+                (ExitReason::Normal, a) => a,
+                (a, b) if a == b => a,
+                (_, _) if second => panic!("there is some missed case"),
+                (a, b) => rec(b, a, true)
+            }
+        }
+        rec(self, other, false)
+    }
 }
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash,Debug)]
@@ -59,9 +76,10 @@ impl GenId {
 
 #[async_trait]
 trait Generator {
-    async fn start(&mut self, to_printer: broadcast::Sender<Msg>, from_pipo: mpsc::Receiver<String>, id: GenId, arg: Option<String>);
+    async fn start(&mut self, to_printer: broadcast::Sender<Msg>, from_pipo: mpsc::Receiver<String>, id: GenId, arg: Option<String>) -> ExitReason;
 }
 
+// TODO: incorporate ExitReason somehow
 #[async_trait]
 trait TimerGenerator {
     async fn init(&mut self, _arg: Option<String>) {}
@@ -73,7 +91,7 @@ trait TimerGenerator {
 
 #[async_trait]
 impl<G: TimerGenerator + Sync + Send> Generator for G {
-    async fn start(&mut self, to_printer: broadcast::Sender<Msg>, mut from_pipo: mpsc::Receiver<String>, id: GenId, arg: Option<String>) {
+    async fn start(&mut self, to_printer: broadcast::Sender<Msg>, mut from_pipo: mpsc::Receiver<String>, id: GenId, arg: Option<String>) -> ExitReason {
         self.init(arg).await;
         let delay = Duration::from_secs(self.get_delay());
         loop {
@@ -93,6 +111,7 @@ impl<G: TimerGenerator + Sync + Send> Generator for G {
             }
         }
         self.finalize().await;
+        ExitReason::Normal
     }
 }
 
@@ -195,11 +214,11 @@ impl BarConfig {
 }
 
 async fn start(setup: SetupConfig) -> ExitReason {
-    let mut tasks = Vec::new();
+    let mut tasks = FuturesUnordered::<JoinHandle<ExitReason>>::new();
 
-    let pipo_handle = {
-        let mut pipo_map = HashMap::new();
+    let mut pipo_map = HashMap::new();
 
+    {
         let (broad_send, _) = broadcast::channel(MPSC_SIZE);
 
         for g in setup.iter() {
@@ -209,7 +228,7 @@ async fn start(setup: SetupConfig) -> ExitReason {
             let gg = *g;
             tasks.push(tokio::spawn(async move {
                 let mut gen = genid_to_generator(gg);
-                gen.start(bs, pipo_recv, gg, a).await;
+                gen.start(bs, pipo_recv, gg, a).await
             }));
             if let Some(_) = pipo_map.insert(setup.get_name(*g).cloned().unwrap_or(g.to_string()), pipo_send) {
                 panic!("some generators have the same name!");
@@ -219,23 +238,30 @@ async fn start(setup: SetupConfig) -> ExitReason {
         for b in setup.take_bars().into_iter() {
             tasks.push(tokio::spawn(printer(broad_send.subscribe(), b)));
         }
-
-        tokio::spawn(pipo_reader(pipo_map))
-    };
-
-    for t in tasks {
-        match t.await {
-            _ => ()
-        }
     }
 
-    // TODO: remove
-    println!("all tasks have finished, exiting...");
+    let mut shutdown_pipo = Some({
+        let (sp, pipo_shutdown_recv) = oneshot::channel();
+        tasks.push(tokio::spawn(pipo_reader(pipo_map, pipo_shutdown_recv)));
+        sp
+    });
 
-    pipo_handle.await.unwrap()
+    let mut reason = ExitReason::Normal;
+    while let Some(res_r) = tasks.next().await {
+        if let Err(_) = res_r {
+            eprintln!("coudln't join??");
+            continue;
+        }
+        shutdown_pipo = shutdown_pipo.and_then(|p| p.send(()).ok()).and(None);
+        let r = res_r.unwrap();
+        reason = reason.combine(r);
+    }
+
+    println!("all tasks have finished, exiting...");
+    reason
 }
 
-async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>) -> ExitReason {
+async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdown: oneshot::Receiver<()>) -> ExitReason {
     // create pipe
     match mkfifo(FIFO_PATH, stat::Mode::S_IRWXU) {
         Ok(()) => (),
@@ -252,9 +278,13 @@ async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>) -> ExitRea
     // read pipe
     let main_loop = async {
         'outer: loop {
-            // TODO: handle if this fails
-            let f = File::open(FIFO_PATH).await.unwrap();
-            let mut reader = BufReader::new(f);
+            let mut reader = match File::open(FIFO_PATH).await {
+                Ok(f) => BufReader::new(f),
+                Err(e) => {
+                    eprintln!("couldn't open pipe '{}' because '{}'", FIFO_PATH, e);
+                    return ExitReason::Error;
+                }
+            };
 
             let mut buf = String::new();
             while let Ok(c) = reader.read_line(&mut buf).await {
@@ -270,12 +300,12 @@ async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>) -> ExitRea
                     };
 
                 if gid == "EXIT" {
-                    break 'outer
+                    break 'outer ExitReason::Normal;
                 }
 
                 if let Some(send) = gens.get_mut(gid) {
                     match send.try_send(msg.to_string()) {
-                        Err(mpsc::error::TrySendError::Closed(_)) => break 'outer,
+                        Err(mpsc::error::TrySendError::Closed(_)) => break 'outer ExitReason::Error,
                         _ => ()
                     }
                 }
@@ -284,10 +314,11 @@ async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>) -> ExitRea
         }
     };
 
-    let was_signal = select! {
-        _ = int_stream.recv() => true,
-        _ = term_stream.recv() => true,
-        _ = main_loop => false
+    let reason = select! {
+        _ = int_stream.recv() => ExitReason::Signal,
+        _ = term_stream.recv() => ExitReason::Signal,
+        r = main_loop => r,
+        _ = shutdown => ExitReason::Error
     };
 
     // remove pipe
@@ -295,11 +326,7 @@ async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>) -> ExitRea
         eprintln!("Couldn't remove pipe at {} because '{}'", FIFO_PATH, e);
     }
 
-    if was_signal {
-        ExitReason::Signal
-    } else {
-        ExitReason::Normal
-    }
+    reason
 }
 
 fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
@@ -312,12 +339,13 @@ fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
 
 #[async_trait]
 impl Generator for EchoGen {
-    async fn start(&mut self, to_printer: broadcast::Sender<Msg>, mut from_pipo: mpsc::Receiver<String>, id: GenId, _arg: Option<String>) {
+    async fn start(&mut self, to_printer: broadcast::Sender<Msg>, mut from_pipo: mpsc::Receiver<String>, id: GenId, _arg: Option<String>) -> ExitReason {
         while let Some(inp) = from_pipo.recv().await {
             if let Err(_) = to_printer.send((id, inp)) {
-                break;
+                return ExitReason::Error;
             }
         }
+        ExitReason::Normal
     }
 }
 
@@ -372,7 +400,7 @@ impl TimerGenerator for RamGen {
     }
 }
 
-async fn printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig) {
+async fn printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig) -> ExitReason {
     let mut output = HashMap::<GenId, String>::new();
     for id in config.iter() {
         output.insert(*id, "".to_string());
@@ -389,16 +417,18 @@ async fn printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig) {
         .args(&["-h", "26"])
         .args(&["-xs", &config.xinerama.to_string()])
         .spawn()
-        // TODO: gracefully terminate whole program if this fails.
-        // maybe return an Err and have start react to it?
-        .expect("dzen couldn't be spawned");
+        .map_err(|e| {
+            eprintln!("couldn't spawn dzen '{}'", e);
+            return ExitReason::Error;
+        })
+        .unwrap();
 
     let mut stdin = dzen.stdin.unwrap();
 
     loop {
         match recv.recv().await {
             Err(RecvError::Lagged(_)) => continue,
-            Err(_) => break,
+            Err(_) => break ExitReason::Normal,
             Ok((id, msg)) => {
                 if !output.contains_key(&id) {
                     continue;
@@ -420,8 +450,10 @@ async fn printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig) {
                     first = false;
                 }
                 buf.push_str("\n");
-                // TODO: handle this error
-                stdin.write_all(buf.as_bytes()).await.expect("couldn't write");
+                if let Err(e) = stdin.write_all(buf.as_bytes()).await {
+                    eprintln!("couldn't write to dzen '{}'", e);
+                    return ExitReason::Error;
+                }
             }
         }
     }
@@ -460,7 +492,7 @@ fn main() {
     std::process::exit(match reason {
         ExitReason::Normal => 0,
         ExitReason::Error  => 1,
-        ExitReason::Signal => 2,
+        ExitReason::Signal => 2, // TODO: should shutdown from signals return non-zero exit codes?
         ExitReason::SignalError => 3
     });
 }
