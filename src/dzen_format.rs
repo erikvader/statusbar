@@ -1,3 +1,5 @@
+mod utils;
+
 use std::collections::VecDeque;
 use std::ops::Add;
 
@@ -5,10 +7,24 @@ use std::ops::Add;
 pub trait DzenFormat<'a> {
     fn format(&self, work: &mut VecDeque<&'a str>);
 
+    // convert to string
+    fn to_string(&self) -> String {
+        let mut work = VecDeque::new();
+        self.format(&mut work);
+        work.into_iter().collect()
+    }
+
+    // adapters ///////////////////////////////////////////////////////////////
     fn colorize(self, color: &'a str) -> Colorize<'a, Self>
-        where Self: Sized
+    where Self: Sized
     {
         Colorize{inner: self, color: color}
+    }
+
+    fn background(self, color: &'a str) -> Background<'a, Self>
+    where Self: Sized
+    {
+        Background{inner: self, color: color}
     }
 
     fn concat<O>(self, other: O) -> Concat<Self, O>
@@ -23,24 +39,18 @@ pub trait DzenFormat<'a> {
     {
         Id(self)
     }
+
+    fn click(self, button: &'a str, command: &'a str) -> Click<'a, Self>
+    where Self: Sized
+    {
+        Click{inner: self, button, command}
+    }
 }
 
 // string conversions /////////////////////////////////////////////////////////
 impl<'a> DzenFormat<'a> for &'a str {
     fn format(&self, work: &mut VecDeque<&'a str>) {
         work.push_back(self)
-    }
-}
-
-pub trait DzenToString {
-    fn to_string(&self) -> String;
-}
-
-impl<'a, T: DzenFormat<'a>> DzenToString for T {
-    fn to_string(&self) -> String {
-        let mut work = VecDeque::new();
-        self.format(&mut work);
-        work.into_iter().collect()
     }
 }
 
@@ -59,6 +69,20 @@ where D: DzenFormat<'a>
     }
 }
 
+pub struct Background<'a, D> {
+    inner: D,
+    color: &'a str
+}
+
+impl<'a, D> DzenFormat<'a> for Background<'a, D>
+where D: DzenFormat<'a>
+{
+    fn format(&self, work: &mut VecDeque<&'a str>) {
+        self.inner.format(work);
+        surround(&["^bg(", self.color, ")"], &["^bg()"], work);
+    }
+}
+
 // id /////////////////////////////////////////////////////////////////////////
 pub struct Id<T>(T);
 
@@ -67,6 +91,63 @@ where T: DzenFormat<'a>
 {
     fn format(&self, work: &mut VecDeque<&'a str>) {
         self.0.format(work)
+    }
+}
+
+// empty //////////////////////////////////////////////////////////////////////
+pub struct Empty;
+
+impl DzenFormat<'_> for Empty {
+    fn format(&self, _work: &mut VecDeque<&'_ str>) {}
+}
+
+pub fn id() -> Id<Empty> {
+    Id(Empty)
+}
+
+// icon ///////////////////////////////////////////////////////////////////////
+pub struct Icon<'a> {
+    path: &'a str
+}
+
+impl<'a> DzenFormat<'a> for Icon<'a> {
+    fn format(&self, work: &mut VecDeque<&'a str>) {
+        surround(&[], &["^i(", self.path, ")"], work);
+    }
+}
+
+pub fn icon<'a>(path: &'a str) -> Icon<'a> {
+    Icon{path}
+}
+
+// space //////////////////////////////////////////////////////////////////////
+pub struct Spacing<'a> {
+    pixels: &'a str
+}
+
+impl<'a> DzenFormat<'a> for Spacing<'a> {
+    fn format(&self, work: &mut VecDeque<&'a str>) {
+        surround(&[], &["^p(+", self.pixels, ")"], work);
+    }
+}
+
+pub fn spacing<'a>(pixels: &'a str) -> Spacing<'a> {
+    Spacing{pixels}
+}
+
+// click //////////////////////////////////////////////////////////////////////
+pub struct Click<'a,D> {
+    button: &'a str,
+    command: &'a str,
+    inner: D
+}
+
+impl<'a,D> DzenFormat<'a> for Click<'a,D>
+where D: DzenFormat<'a>
+{
+    fn format(&self, work: &mut VecDeque<&'a str>) {
+        self.inner.format(work);
+        surround(&["^ca(", self.button, ", ", self.command, ")"], &["^ca()"], work);
     }
 }
 

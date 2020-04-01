@@ -14,16 +14,6 @@ use dzen_format::*;
 // TODO: tänk på hur programmet ska startas. Alltid daemoniza? Hantera SIGHUP?
 
 fn main() {
-    let s = "hej".to_string();
-    let x = s
-        .colorize("#abc123")
-        .id()
-        +
-        "då"
-        .colorize("#beef12")
-        +
-        "omg";
-    println!("{}", x.to_string());
     // let mut setup = bar::SetupConfig::new();
     // let mut bar1 = bar::BarConfig::new(1);
     // let c = setup.create_module(GenType::CPU, Some("detailed".to_string()));
