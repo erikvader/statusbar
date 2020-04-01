@@ -1,7 +1,7 @@
 pub mod utils;
 
 use std::collections::VecDeque;
-use std::ops::Add;
+use std::ops::{Add,Rem};
 use std::fmt;
 
 pub struct DzenBuilder<'a> {
@@ -10,7 +10,7 @@ pub struct DzenBuilder<'a> {
 
 impl<'a> DzenBuilder<'a> {
     // creation ///////////////////////////////////////////////////////////////
-    fn new() -> Self {
+    pub fn new() -> Self {
         DzenBuilder{
             work: VecDeque::new()
         }
@@ -22,7 +22,7 @@ impl<'a> DzenBuilder<'a> {
     }
 
     pub fn from_str(s: &'a str) -> Self {
-        Self::new().push(s)
+        Self::new().add(s)
     }
 
     // adapters ///////////////////////////////////////////////////////////////
@@ -40,12 +40,20 @@ impl<'a> DzenBuilder<'a> {
             .surround(&["^ca(", button, ", "], &[])
     }
 
-    // helpers ////////////////////////////////////////////////////////////////
-    fn push(mut self, s: &'a str) -> Self {
+    pub fn add(mut self, s: &'a str) -> Self {
         self.work.push_back(s);
         self
     }
 
+    pub fn add_not_empty(self, s: &'a str) -> Self {
+        if !self.work.is_empty() {
+            self.add(s)
+        } else {
+            self
+        }
+    }
+
+    // helpers ////////////////////////////////////////////////////////////////
     fn surround(mut self, before: &[&'a str], after: &[&'a str]) -> Self {
         for s in before.iter().rev() {
             self.work.push_front(s);
@@ -77,7 +85,14 @@ impl<'a> Add for DzenBuilder<'a> {
 impl<'a> Add<&'a str> for DzenBuilder<'a> {
     type Output = Self;
     fn add(self, other: &'a str) -> Self::Output {
-        self.push(other)
+        self.add(other)
+    }
+}
+
+impl<'a> Rem<&'a str> for DzenBuilder<'a> {
+    type Output = Self;
+    fn rem(self, other: &'a str) -> Self::Output {
+        self.add_not_empty(other)
     }
 }
 

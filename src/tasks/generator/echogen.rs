@@ -10,7 +10,13 @@ pub struct EchoGen;
 
 #[async_trait]
 impl Generator for EchoGen {
-    async fn start(&mut self, to_printer: broadcast::Sender<Msg>, mut from_pipo: mpsc::Receiver<String>, id: GenId, _arg: Option<String>) -> ExitReason {
+    async fn start(&mut self,
+                   to_printer: broadcast::Sender<Msg>,
+                   mut from_pipo: mpsc::Receiver<String>,
+                   id: GenId,
+                   _arg: Option<String>,
+                   _name: String) -> ExitReason
+    {
         while let Some(inp) = from_pipo.recv().await {
             if let Err(_) = to_printer.send((id, inp)) {
                 return ExitReason::Error;

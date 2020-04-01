@@ -26,11 +26,13 @@ pub async fn main(setup: SetupConfig) -> ExitReason {
             let bs = broad_send.clone();
             let a = setup.get_arg(*g).cloned();
             let gg = *g;
+            let name = setup.get_name(*g).cloned().unwrap_or(g.to_string());
+            let name2 = name.clone();
             tasks.push(tokio::spawn(async move {
                 let mut gen = genid_to_generator(gg);
-                gen.start(bs, pipo_recv, gg, a).await
+                gen.start(bs, pipo_recv, gg, a, name2).await
             }));
-            if let Some(_) = pipo_map.insert(setup.get_name(*g).cloned().unwrap_or(g.to_string()), pipo_send) {
+            if let Some(_) = pipo_map.insert(name, pipo_send) {
                 panic!("some generators have the same name!");
             }
         }
