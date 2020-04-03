@@ -2,13 +2,18 @@ use std::collections::HashMap;
 use itertools::Itertools;
 
 use crate::tasks::generator::*;
+use crate::x;
 
 pub struct BarConfig {
     left: Vec<GenId>,
     right: Vec<GenId>,
-    xinerama: u32,
     tray: bool,
     separator: String,
+    padding: usize,
+
+    xinerama: usize,
+    output: String,
+    rect: x::Rectangle,
 }
 
 pub struct SetupConfig {
@@ -65,14 +70,22 @@ impl SetupConfig {
 }
 
 impl BarConfig {
-    pub fn new(xinerama: u32) -> Self {
-        Self{
-            left: Vec::new(),
-            right: Vec::new(),
-            xinerama: xinerama,
-            separator: " | ".to_string(),
-            tray: false
+    pub fn new(output: String, setup: &x::XSetup) -> Option<Self> {
+        if let Some(xin) = setup.get_xinerama(&output) {
+            if let Some(rect) = setup.get_rect(&output) {
+                return Some(Self{
+                    left: Vec::new(),
+                    right: Vec::new(),
+                    separator: " | ".to_string(),
+                    tray: false,
+                    padding: 10,
+                    output: output,
+                    xinerama: xin,
+                    rect: rect
+                });
+            }
         }
+        None
     }
 
     pub fn add_left(&mut self, id: GenId) {
@@ -87,11 +100,31 @@ impl BarConfig {
         self.left.iter().chain(self.right.iter())
     }
 
-    pub fn get_xinerama(&self) -> u32 {
+    pub fn get_xinerama(&self) -> usize {
         self.xinerama
     }
 
     pub fn get_separator(&self) -> &str {
         &self.separator
+    }
+
+    pub fn iter_left(&self) -> impl Iterator<Item=&GenId> {
+        self.left.iter()
+    }
+
+    pub fn iter_right(&self) -> impl Iterator<Item=&GenId> {
+        self.right.iter()
+    }
+
+    pub fn get_output(&self) -> &str {
+        &self.output
+    }
+
+    pub fn get_padding(&self) -> usize {
+        self.padding
+    }
+
+    pub fn get_screen_width(&self) -> u16 {
+        self.rect.2
     }
 }

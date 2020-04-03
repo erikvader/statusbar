@@ -14,19 +14,18 @@ use tasks::main_task;
 // TODO: tänk på hur programmet ska startas. Alltid daemoniza? Hantera SIGHUP?
 
 fn main() {
+    let xsetup = x::get_x_setup().expect("couldn't get X setup");
+
     let mut setup = bar::SetupConfig::new();
-    let mut bar1 = bar::BarConfig::new(1);
+    let mut bar1 = bar::BarConfig::new("DisplayPort-0".to_string(), &xsetup).expect("not connected?");
     let c = setup.create_module(GenType::CPU, None);
     setup.name_module(c, "cpu".to_string());
     bar1.add_left(c);
     bar1.add_right(setup.create_module(GenType::RAM, None));
-    setup.add_bar(bar1);
-
-    let mut bar2 = bar::BarConfig::new(2);
     let echo = setup.create_module(GenType::ECHO, None);
     setup.name_module(echo, "adina".to_string());
-    bar2.add_left(echo);
-    setup.add_bar(bar2);
+    bar1.add_left(echo);
+    setup.add_bar(bar1);
 
     // NOTE: explicitly creating and shutting down a runtime like this
     // is required because of https://github.com/tokio-rs/tokio/issues/2318

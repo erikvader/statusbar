@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+// use itertools::Itertools;
 use tokio;
 use tokio::sync::broadcast::{self, RecvError};
 use tokio::io::AsyncWriteExt;
@@ -7,6 +8,7 @@ use crate::constants::*;
 use crate::bar::*;
 use crate::tasks::ExitReason;
 use crate::tasks::generator::GenId;
+use crate::dzen_format::DzenBuilder;
 
 pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig) -> ExitReason {
     let mut output = HashMap::<GenId, String>::new();
@@ -21,7 +23,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
         .args(&["-fg", "#dfdfdf"])
         .args(&["-bg", "#333333"])
         .args(&["-fn", "xft:Ubuntu Mono:pixelsize=14:antialias=true:hinting=true"])
-        // .args(&["-ta", "l"])
+        .args(&["-ta", "l"])
         .args(&["-h", "26"])
         .args(&["-xs", &config.get_xinerama().to_string()])
         .spawn()
@@ -44,21 +46,25 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
 
                 *output.get_mut(&id).unwrap() = msg;
 
-                let mut first = true;
-                let mut buf = String::new();
-                for c in config.iter() {
-                    let x = output.get(c).unwrap();
-                    if x.is_empty() {
-                        continue;
-                    }
-                    if !first {
-                        buf.push_str(config.get_separator());
-                    }
-                    buf.push_str(x);
-                    first = false;
-                }
-                buf.push_str("\n");
-                if let Err(e) = stdin.write_all(buf.as_bytes()).await {
+                let sep = config.get_separator();
+                let left_side = config.iter_left()
+                    .map(|x| output.get(x).unwrap().as_str())
+                    .filter(|x| !x.is_empty())
+                    .fold(DzenBuilder::new(), |b, i| b % sep + i);
+
+                let right_side = config.iter_right()
+                    .map(|x| output.get(x).unwrap().as_str())
+                    .filter(|x| !x.is_empty())
+                    .fold(DzenBuilder::new(), |b, i| b % sep + i);
+
+                let w = (config.get_screen_width() - config.get_padding() as u16).to_string();
+                let padding_str = config.get_padding().to_string();
+                let line = (right_side.block_align(&w, "_RIGHT") +
+                            left_side.position_x(&padding_str))
+                    .add("\n")
+                    .to_string();
+
+                if let Err(e) = stdin.write_all(line.as_bytes()).await {
                     eprintln!("couldn't write to dzen '{}'", e);
                     return ExitReason::Error;
                 }

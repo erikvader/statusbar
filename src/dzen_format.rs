@@ -40,6 +40,26 @@ impl<'a> DzenBuilder<'a> {
             .surround(&["^ca(", button, ", "], &[])
     }
 
+    pub fn position(self, x: &'a str, y: &'a str) -> Self {
+        self.surround(&["^pa(", x, ";", y, ")"], &[])
+    }
+
+    pub fn position_x(self, x: &'a str) -> Self {
+        self.position(x, "")
+    }
+
+    pub fn shift(self, x: &'a str, y: &'a str) -> Self {
+        self.surround(&["^p(", x, ";", y, ")"], &[])
+    }
+
+    pub fn shift_x(self, x: &'a str) -> Self {
+        self.shift(x, "")
+    }
+
+    pub fn block_align(self, width: &'a str, align: &'a str) -> Self {
+        self.surround(&["^ba(", width, ",", align, ")"], &[])
+    }
+
     pub fn add(mut self, s: &'a str) -> Self {
         self.work.push_back(s);
         self
