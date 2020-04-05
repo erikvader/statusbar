@@ -10,7 +10,7 @@ use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::oneshot;
-use crate::constants::*;
+use crate::config::*;
 use crate::tasks::ExitReason;
 
 pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdown: oneshot::Receiver<()>) -> ExitReason {

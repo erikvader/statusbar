@@ -1,7 +1,6 @@
 use sysinfo::{SystemExt,ProcessorExt};
-use itertools::Itertools;
 use async_trait::async_trait;
-use super::TimerGenerator;
+use super::{TimerGenerator,GenArg};
 use crate::dzen_format::DzenBuilder;
 
 pub struct CpuGen{sys: sysinfo::System, detailed: bool}
@@ -14,10 +13,8 @@ impl CpuGen {
 
 #[async_trait]
 impl TimerGenerator for CpuGen {
-    fn get_delay(&self) -> u64 { 3 }
-
-    async fn init(&mut self, arg: Option<String>) {
-        if let Some(a) = arg {
+    async fn init(&mut self, arg: &Option<GenArg>) {
+        if let Some(GenArg{arg: Some(a), ..}) = arg {
             if a == "detailed" {
                 self.detailed = true;
             }

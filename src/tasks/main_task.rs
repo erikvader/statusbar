@@ -6,14 +6,15 @@ use tokio::sync::mpsc;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 use tokio::sync::oneshot;
-use crate::constants::*;
 use crate::bar::*;
 use super::ExitReason;
 use super::generator::genid_to_generator;
 use super::dzen::dzen_printer;
 use super::pipo::pipo_reader;
 
-pub async fn main(setup: SetupConfig) -> ExitReason {
+const MPSC_SIZE: usize = 32;
+
+pub async fn main(mut setup: SetupConfig) -> ExitReason {
     let mut tasks = FuturesUnordered::<JoinHandle<ExitReason>>::new();
 
     let mut pipo_map = HashMap::new();
@@ -21,10 +22,11 @@ pub async fn main(setup: SetupConfig) -> ExitReason {
     {
         let (broad_send, _) = broadcast::channel(MPSC_SIZE);
 
+        let mut args = setup.extract_args();
         for g in setup.iter() {
             let (pipo_send, pipo_recv) = mpsc::channel(MPSC_SIZE);
             let bs = broad_send.clone();
-            let a = setup.get_arg(*g).cloned();
+            let a = args.remove(g);
             let gg = *g;
             let name = setup.get_name(*g).cloned().unwrap_or(g.to_string());
             let name2 = name.clone();

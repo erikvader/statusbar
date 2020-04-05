@@ -3,6 +3,10 @@ pub mod dzen;
 pub mod main_task;
 pub mod pipo;
 
+use crate::tasks::generator::GenId;
+
+pub type Msg = (GenId, String);
+
 #[derive(PartialEq,Eq,Clone,Copy,Debug)]
 pub enum ExitReason {
     Signal,

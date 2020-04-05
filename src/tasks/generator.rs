@@ -9,8 +9,7 @@ use tokio::time::delay_for;
 use tokio::select;
 use core::time::Duration;
 use async_trait::async_trait;
-use crate::constants::*;
-use super::ExitReason;
+use super::{ExitReason,Msg};
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash,Debug)]
 pub enum GenType {
@@ -23,6 +22,11 @@ pub enum GenType {
 pub struct GenId {
     gen: GenType,
     id: u8
+}
+
+pub struct GenArg {
+    pub timeout: Option<u64>,
+    pub arg: Option<String>
 }
 
 impl GenId {
@@ -42,18 +46,20 @@ pub trait Generator {
     async fn start(&mut self, to_printer: broadcast::Sender<Msg>,
                    from_pipo: mpsc::Receiver<String>,
                    id: GenId,
-                   arg: Option<String>,
+                   arg: Option<GenArg>,
                    name: String) -> ExitReason;
 }
 
 // TODO: incorporate ExitReason somehow
 #[async_trait]
 pub trait TimerGenerator {
-    async fn init(&mut self, _arg: Option<String>) {}
+    async fn init(&mut self, _arg: &Option<GenArg>) {}
     async fn update(&mut self, name: &str) -> String;
     async fn finalize(&mut self) {}
     async fn on_msg(&mut self, _msg: String) {}
-    fn get_delay(&self) -> u64 { 5 }
+    fn get_delay(&self, arg: &Option<GenArg>) -> u64 {
+        arg.as_ref().and_then(|ga| ga.timeout).unwrap_or(5)
+    }
 }
 
 #[async_trait]
@@ -62,11 +68,11 @@ impl<G: TimerGenerator + Sync + Send> Generator for G {
                    to_printer: broadcast::Sender<Msg>,
                    mut from_pipo: mpsc::Receiver<String>,
                    id: GenId,
-                   arg: Option<String>,
+                   arg: Option<GenArg>,
                    name: String) -> ExitReason
     {
-        self.init(arg).await;
-        let delay = Duration::from_secs(self.get_delay());
+        self.init(&arg).await;
+        let delay = Duration::from_secs(self.get_delay(&arg));
         loop {
             let s = self.update(&name).await;
             if let Err(_) = to_printer.send((id, s)) {

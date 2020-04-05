@@ -1,5 +1,5 @@
 use super::*;
-use crate::constants::*;
+use crate::config::*;
 
 impl<'a> DzenBuilder<'a> {
     pub fn name_click(self, button: &'a str, module_name: &'a str) -> Self {

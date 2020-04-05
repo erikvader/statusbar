@@ -25,6 +25,10 @@ impl<'a> DzenBuilder<'a> {
         Self::new().add(s)
     }
 
+    pub fn to_stringln(self) -> String {
+        self.add("\n").to_string()
+    }
+
     // adapters ///////////////////////////////////////////////////////////////
     pub fn colorize(self, color: &'a str) -> Self {
         self.surround(&["^fg(", color, ")"], &["^fg()"])
@@ -52,10 +56,15 @@ impl<'a> DzenBuilder<'a> {
         self.surround(&["^p(", x, ";", y, ")"], &[])
     }
 
-    pub fn shift_x(self, x: &'a str) -> Self {
+    pub fn lpad(self, x: &'a str) -> Self {
         self.shift(x, "")
     }
 
+    pub fn rpad(self, x: &'a str) -> Self {
+        self.surround(&[], &["^p(", x, ")"])
+    }
+
+    // NOTE: Only works if self doesn't contain any tags. bug(?) in dzen
     pub fn block_align(self, width: &'a str, align: &'a str) -> Self {
         self.surround(&["^ba(", width, ",", align, ")"], &[])
     }

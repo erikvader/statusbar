@@ -4,7 +4,6 @@ use tokio::sync::broadcast;
 use async_trait::async_trait;
 use super::*;
 use crate::tasks::ExitReason;
-use crate::constants::*;
 
 pub struct EchoGen;
 
@@ -14,7 +13,7 @@ impl Generator for EchoGen {
                    to_printer: broadcast::Sender<Msg>,
                    mut from_pipo: mpsc::Receiver<String>,
                    id: GenId,
-                   _arg: Option<String>,
+                   _arg: Option<GenArg>,
                    _name: String) -> ExitReason
     {
         while let Some(inp) = from_pipo.recv().await {
