@@ -40,6 +40,22 @@ fn build_side<'a,'b>(
         .fold(DzenBuilder::new(), |b, i| b % sep + i)
 }
 
+fn spawn_tray() -> tokio::io::Result<tokio::process::Child> {
+    Command::new("trayer")
+        .kill_on_drop(true)
+        .args(&["--edge", "top",
+                "--widthtype", "request",
+                "--height", "16",
+                "--distance", "5",
+                // NOTE: this has a different way for specifying the
+                // screen, and I don't see how to choose one from
+                // xinerama index or output name, so this will always
+                // be put on the primary screen (which is basically
+                // always wanted).
+                "--monitor", "primary"])
+        .spawn()
+}
+
 pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig) -> ExitReason {
     // aliases
     let sep = config.get_separator();
@@ -62,6 +78,19 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
             return ExitReason::Error;
         })
         .unwrap();
+
+    // spawn tray
+    let _tray = if config.wants_tray() {
+        time::delay_for(Duration::from_secs(2)).await;
+        spawn_tray()
+            .map_err(|e| {
+                eprintln!("coudln't spawn trayer '{}'", e);
+                return ExitReason::Error;
+            })
+            .ok()
+    } else {
+        None
+    };
 
     let mut lstdin = dzenl.stdin.unwrap();
     let mut rstdin = dzenr.stdin.unwrap();

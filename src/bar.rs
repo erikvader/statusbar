@@ -133,6 +133,10 @@ impl BarConfig {
     pub fn get_screen_width(&self) -> u16 {
         self.rect.2
     }
+
+    pub fn wants_tray(&self) -> bool {
+        self.tray
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
