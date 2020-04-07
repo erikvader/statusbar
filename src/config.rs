@@ -14,7 +14,7 @@ pub fn config() -> bar::Result {
                  .add_left(GB::new(GT::CPU))
                  .add_left(GB::new(GT::RAM))
                  .add_right(GB::new(GT::CPU))
-                 .add_right(GB::new(GT::RAM))
+                 .add_right(GB::new(GT::TIME))
                  .tray(true))
         .build()
 }

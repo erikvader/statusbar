@@ -15,3 +15,4 @@ itertools = "^0.9.0"
 nix = "^0.17.0"
 tokio = {version = "^0.2.13", features = ["full"]}
 x11rb = {version = "^0.4.1", features = ["randr", "xinerama"]}
+chrono = "^0.4.11"

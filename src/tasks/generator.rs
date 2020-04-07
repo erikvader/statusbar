@@ -1,6 +1,7 @@
 pub mod echogen;
 pub mod ramgen;
 pub mod cpugen;
+pub mod timegen;
 
 use tokio;
 use tokio::sync::mpsc;
@@ -15,7 +16,8 @@ use super::{ExitReason,Msg};
 pub enum GenType {
     CPU = 0,
     RAM,
-    ECHO
+    ECHO,
+    TIME
 }
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash)]
@@ -72,12 +74,12 @@ impl<G: TimerGenerator + Sync + Send> Generator for G {
                    name: String) -> ExitReason
     {
         self.init(&arg).await;
-        let delay = Duration::from_secs(self.get_delay(&arg));
         loop {
             let s = self.update(&name).await;
             if let Err(_) = to_printer.send((id, s)) {
                 break;
             }
+            let delay = Duration::from_secs(self.get_delay(&arg));
             let msg = select! {
                 _ = delay_for(delay) => None,
                 msg = from_pipo.recv() => match msg {
@@ -98,6 +100,7 @@ pub fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
     match id.gen {
         GenType::ECHO => Box::new(echogen::EchoGen),
         GenType::RAM => Box::new(ramgen::RamGen::new()),
-        GenType::CPU => Box::new(cpugen::CpuGen::new())
+        GenType::CPU => Box::new(cpugen::CpuGen::new()),
+        GenType::TIME => Box::new(timegen::TimeGen::new()),
     }
 }
