@@ -16,11 +16,6 @@ impl<'a> DzenBuilder<'a> {
         }
     }
 
-    pub fn from_icon(path: &'a str) -> Self {
-        Self::from_str(path)
-            .surround(&["^i("], &[")"])
-    }
-
     pub fn from_str(s: &'a str) -> Self {
         Self::new().add(s)
     }
@@ -30,6 +25,16 @@ impl<'a> DzenBuilder<'a> {
     }
 
     // adapters ///////////////////////////////////////////////////////////////
+    pub fn append_icon(self, icon: &'a str) -> Self {
+        let asd = DzenBuilder::icon_strs(icon);
+        self.surround(&[], &asd)
+    }
+
+    pub fn prepend_icon(self, icon: &'a str) -> Self {
+        let asd = DzenBuilder::icon_strs(icon);
+        self.surround(&asd, &[])
+    }
+
     pub fn colorize(self, color: &'a str) -> Self {
         self.surround(&["^fg(", color, ")"], &["^fg()"])
     }
@@ -91,6 +96,22 @@ impl<'a> DzenBuilder<'a> {
             self.work.push_back(s);
         }
         self
+    }
+
+    fn icon_strs(icon: &'a str) -> Vec<&'a str> {
+        let mut tmp = vec!["^i("];
+        let path = crate::config::ICON_PATH;
+        if path.starts_with("~") {
+            let h = unsafe{crate::HOME.as_str()};
+            tmp.push(h);
+            tmp.push(&path[1..]);
+        } else {
+            tmp.push(path);
+        }
+        tmp.push("/");
+        tmp.push(icon);
+        tmp.push(")");
+        tmp
     }
 }
 

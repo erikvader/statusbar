@@ -6,6 +6,7 @@ use super::tasks::generator::GenType as GT;
 
 pub const FIFO_PATH: &str = "/tmp/statusbar_fifo";
 pub const DZEN_FONT: &str = "xft:Ubuntu Mono:pixelsize=14:antialias=true:hinting=true";
+pub const ICON_PATH: &str = "~/.local/share/statusbar";
 
 pub fn config() -> bar::Result {
     SB::new()

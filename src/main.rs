@@ -11,8 +11,15 @@ use tasks::*;
 use tasks::main_task;
 
 // TODO: tänk på hur programmet ska startas. Alltid daemoniza? Hantera SIGHUP?
+// TODO: mer config options i buildern
+// TODO: resten utav generatorer
+
+pub static mut HOME: String = String::new();
 
 fn main() {
+    let h = std::env::var("HOME").expect("couldn't get HOME");
+    unsafe {HOME = h;}
+
     let setup = config::config().unwrap();
 
     // NOTE: explicitly creating and shutting down a runtime like this
