@@ -20,6 +20,10 @@ impl XSetup {
     pub fn get_rect(&self, name: &str) -> Option<Rectangle> {
         self.outputs.iter().find(|(s, _, _)| s == name).map(|(_, _, r)| *r)
     }
+
+    pub fn outputs(&self) -> impl Iterator<Item = &str> {
+        self.outputs.iter().map(|(o, _, _)| o.as_str())
+    }
 }
 
 pub fn get_x_setup() -> Result<XSetup, Box<dyn std::error::Error>> {

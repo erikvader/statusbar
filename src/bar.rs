@@ -146,7 +146,10 @@ impl BarConfig {
 pub type Result = std::result::Result<SetupConfig, Box<dyn std::error::Error>>;
 
 pub struct SetupBuilder {
-    bars: Vec<BarBuilder>
+    bars: Vec<BarBuilder>,
+    map_other: Option<Box<dyn Fn(String) -> BarBuilder>>,
+    global_sep: Option<String>,
+    global_pad: Option<usize>
 }
 
 pub struct BarBuilder {
@@ -167,7 +170,12 @@ pub struct GenBuilder {
 
 impl SetupBuilder {
     pub fn new() -> Self {
-        SetupBuilder{bars: Vec::new()}
+        SetupBuilder{
+            bars: Vec::new(),
+            map_other: None,
+            global_sep: None,
+            global_pad: None
+        }
     }
 
     pub fn add_bar(mut self, bar: BarBuilder) -> Self {
@@ -175,17 +183,49 @@ impl SetupBuilder {
         self
     }
 
-    pub fn build(self) -> Result {
+    pub fn map_other<F>(mut self, f: F) -> Self
+    where F: Fn(String) -> BarBuilder + 'static
+    {
+        self.map_other = Some(Box::new(f));
+        self
+    }
+
+    pub fn separator<S: Into<String>>(mut self, sep: S) -> Self {
+        self.global_sep = Some(sep.into());
+        self
+    }
+
+    pub fn padding(mut self, pad: usize) -> Self {
+        self.global_pad = Some(pad);
+        self
+    }
+
+    pub fn build(mut self) -> Result {
         let xsetup = x::get_x_setup()?;
 
+        // TODO: handle mirroring of screens
+        if let Some(f) = self.map_other {
+            let used: Vec<_> = self.bars.iter()
+                .map(|b| b.output.as_str())
+                .collect();
+            let unused: Vec<_> = xsetup.outputs()
+                .filter(|o| !used.contains(o))
+                .collect();
+            for u in unused.into_iter() {
+                self.bars.push(f(u.to_string()));
+            }
+        }
+
+        let gsep = self.global_sep;
+        let gpad = self.global_pad;
         let mut setup = SetupConfig::new();
         for b in self.bars.into_iter() {
             let mut bar = BarConfig::new(b.output, &xsetup).ok_or("output is not connected")?;
             bar.tray = b.tray;
-            if let Some(sep) = b.sep {
+            if let Some(sep) = b.sep.or_else(|| gsep.clone()) {
                 bar.separator = sep;
             }
-            if let Some(pad) = b.pad {
+            if let Some(pad) = b.pad.or_else(|| gpad) {
                 bar.padding = pad;
             }
 
