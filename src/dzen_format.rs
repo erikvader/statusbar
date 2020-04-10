@@ -6,7 +6,7 @@ use std::fmt;
 
 pub struct DzenBuilder<'a> {
     work: VecDeque<&'a str>,
-    res: String
+    res: Vec<&'a str>
 }
 
 impl<'a> DzenBuilder<'a> {
@@ -14,7 +14,7 @@ impl<'a> DzenBuilder<'a> {
     pub fn new() -> Self {
         DzenBuilder{
             work: VecDeque::new(),
-            res: String::new()
+            res: Vec::new()
         }
     }
 
@@ -26,15 +26,24 @@ impl<'a> DzenBuilder<'a> {
         self.add("\n").to_string()
     }
 
-    // adapters ///////////////////////////////////////////////////////////////
+    // sections ///////////////////////////////////////////////////////////////
     pub fn new_section(mut self) -> Self {
         for w in self.work.iter() {
-            self.res = self.res + w;
+            self.res.push(w);
         }
         self.work.clear();
         self
     }
 
+    pub fn everything(mut self) -> Self {
+        for r in self.res.iter().rev() {
+            self.work.push_front(r);
+        }
+        self.res.clear();
+        self
+    }
+
+    // adapters ///////////////////////////////////////////////////////////////
     pub fn append_icon(self, icon: &'a str) -> Self {
         let asd = DzenBuilder::icon_strs(icon);
         self.surround(&[], &asd)
@@ -132,7 +141,9 @@ impl<'a> DzenBuilder<'a> {
 
 impl fmt::Display for DzenBuilder<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.res)?;
+        for s in self.res.iter() {
+            f.write_str(s)?;
+        }
         for s in self.work.iter() {
             f.write_str(s)?;
         }
