@@ -10,14 +10,17 @@ use tokio::time::delay_for;
 use tokio::select;
 use core::time::Duration;
 use async_trait::async_trait;
-use super::{ExitReason,Msg};
+pub use super::{ExitReason,Msg};
+
+pub type Result<X> = std::result::Result<X, ExitReason>;
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash,Debug)]
 pub enum GenType {
     CPU = 0,
     RAM,
     ECHO,
-    TIME
+    TIME,
+    NET,
 }
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash)]
@@ -52,15 +55,25 @@ pub trait Generator {
                    name: String) -> ExitReason;
 }
 
-// TODO: incorporate ExitReason somehow
 #[async_trait]
 pub trait TimerGenerator {
-    async fn init(&mut self, _arg: &Option<GenArg>) {}
-    async fn update(&mut self, name: &str) -> String;
-    async fn finalize(&mut self) {}
-    async fn on_msg(&mut self, _msg: String) {}
+    async fn init(&mut self, _arg: &Option<GenArg>) -> Result<()> {Ok(())}
+    async fn update(&mut self, name: &str) -> Result<String>;
+    async fn finalize(&mut self) -> Result<()> {Ok(())}
+    async fn on_msg(&mut self, _msg: String) -> Result<()> {Ok(())}
     fn get_delay(&self, arg: &Option<GenArg>) -> u64 {
         arg.as_ref().and_then(|ga| ga.timeout).unwrap_or(5)
+    }
+}
+
+macro_rules! ERTry {
+    ($e:expr) => {
+        match $e {
+            Ok(x) => x,
+            Err(er) => {
+                return er;
+            }
+        }
     }
 }
 
@@ -73,9 +86,9 @@ impl<G: TimerGenerator + Sync + Send> Generator for G {
                    arg: Option<GenArg>,
                    name: String) -> ExitReason
     {
-        self.init(&arg).await;
+        ERTry!(self.init(&arg).await);
         loop {
-            let s = self.update(&name).await;
+            let s = ERTry!(self.update(&name).await);
             if let Err(_) = to_printer.send((id, s)) {
                 break;
             }
@@ -88,10 +101,10 @@ impl<G: TimerGenerator + Sync + Send> Generator for G {
                 }
             };
             if let Some(m) = msg {
-                self.on_msg(m).await;
+                ERTry!(self.on_msg(m).await);
             }
         }
-        self.finalize().await;
+        ERTry!(self.finalize().await);
         ExitReason::Normal
     }
 }
