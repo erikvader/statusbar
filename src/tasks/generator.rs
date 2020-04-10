@@ -2,6 +2,7 @@ pub mod echogen;
 pub mod ramgen;
 pub mod cpugen;
 pub mod timegen;
+pub mod netgen;
 
 use tokio;
 use tokio::sync::mpsc;
@@ -115,5 +116,6 @@ pub fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
         GenType::RAM => Box::new(ramgen::RamGen::new()),
         GenType::CPU => Box::new(cpugen::CpuGen::new()),
         GenType::TIME => Box::new(timegen::TimeGen::new()),
+        GenType::NET => Box::new(netgen::NetGen::new()),
     }
 }
