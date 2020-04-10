@@ -11,8 +11,8 @@ use tasks::*;
 use tasks::main_task;
 
 // TODO: tänk på hur programmet ska startas. Alltid daemoniza? Hantera SIGHUP?
-// TODO: mer config options i buildern
 // TODO: resten utav generatorer
+// TODO: separera update till två funktioner i TimerGenerator, en som uppdaterar och en som skriver ut sig själv
 
 pub static mut HOME: String = String::new();
 

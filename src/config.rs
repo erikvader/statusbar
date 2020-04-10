@@ -17,6 +17,8 @@ pub fn config() -> bar::Result {
                  .add_right(GB::new(GT::NET)
                             .argument("enp4s0")
                             .timeout(1))
+                 .add_right(GB::new(GT::DISK)
+                            .argument("/,/home,/media/3TB,/media/4TB"))
                  .add_right(GB::new(GT::CPU))
                  .add_right(GB::new(GT::TIME))
                  .tray(true))

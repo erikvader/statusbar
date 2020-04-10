@@ -3,6 +3,7 @@ pub mod ramgen;
 pub mod cpugen;
 pub mod timegen;
 pub mod netgen;
+pub mod diskgen;
 
 use tokio;
 use tokio::sync::mpsc;
@@ -22,6 +23,7 @@ pub enum GenType {
     ECHO,
     TIME,
     NET,
+    DISK,
 }
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash)]
@@ -117,5 +119,6 @@ pub fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
         GenType::CPU => Box::new(cpugen::CpuGen::new()),
         GenType::TIME => Box::new(timegen::TimeGen::new()),
         GenType::NET => Box::new(netgen::NetGen::new()),
+        GenType::DISK => Box::new(diskgen::DiskGen::new()),
     }
 }
