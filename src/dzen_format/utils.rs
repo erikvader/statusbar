@@ -30,3 +30,29 @@ impl<'a> DzenBuilder<'a> {
         }
     }
 }
+
+pub fn bytes_to_ibibyte_string(b: u64) -> String {
+    let mag = if b == 0 {
+        0 as f64
+    } else {
+        (b as f64).log2() / (1024 as f64).log2()
+    }.floor();
+
+    let mut num = b as f64 / 1024_f64.powf(mag);
+    num *= 10_f64;
+    num = num.trunc();
+    num /= 10_f64;
+
+    let unit = match mag as u32 {
+        0 => "B",
+        1 => "KiB",
+        2 => "MiB",
+        3 => "GiB",
+        4 => "TiB",
+        5 => "PiB",
+        6 => "EiB",
+        7 => "ZiB",
+        _ => "YiB"
+    };
+    format!("{:.1} {}", num, unit)
+}

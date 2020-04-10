@@ -5,14 +5,16 @@ use std::ops::{Add,Rem};
 use std::fmt;
 
 pub struct DzenBuilder<'a> {
-    work: VecDeque<&'a str>
+    work: VecDeque<&'a str>,
+    res: String
 }
 
 impl<'a> DzenBuilder<'a> {
     // creation ///////////////////////////////////////////////////////////////
     pub fn new() -> Self {
         DzenBuilder{
-            work: VecDeque::new()
+            work: VecDeque::new(),
+            res: String::new()
         }
     }
 
@@ -25,6 +27,14 @@ impl<'a> DzenBuilder<'a> {
     }
 
     // adapters ///////////////////////////////////////////////////////////////
+    pub fn new_section(mut self) -> Self {
+        for w in self.work.iter() {
+            self.res = self.res + w;
+        }
+        self.work.clear();
+        self
+    }
+
     pub fn append_icon(self, icon: &'a str) -> Self {
         let asd = DzenBuilder::icon_strs(icon);
         self.surround(&[], &asd)
@@ -80,7 +90,12 @@ impl<'a> DzenBuilder<'a> {
     }
 
     pub fn add_not_empty(self, s: &'a str) -> Self {
-        if !self.work.is_empty() {
+        let e = !self.work.is_empty();
+        self.maybe_add(e, s)
+    }
+
+    pub fn maybe_add(self, b: bool, s: &'a str) -> Self {
+        if b {
             self.add(s)
         } else {
             self
@@ -117,6 +132,7 @@ impl<'a> DzenBuilder<'a> {
 
 impl fmt::Display for DzenBuilder<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.res)?;
         for s in self.work.iter() {
             f.write_str(s)?;
         }
@@ -124,13 +140,13 @@ impl fmt::Display for DzenBuilder<'_> {
     }
 }
 
-impl<'a> Add for DzenBuilder<'a> {
-    type Output = Self;
-    fn add(mut self, mut other: Self) -> Self::Output {
-        self.work.append(&mut other.work);
-        self
-    }
-}
+// impl<'a> Add for DzenBuilder<'a> {
+//     type Output = Self;
+//     fn add(mut self, mut other: Self) -> Self::Output {
+//         self.work.append(&mut other.work);
+//         self
+//     }
+// }
 
 impl<'a> Add<&'a str> for DzenBuilder<'a> {
     type Output = Self;
@@ -149,5 +165,11 @@ impl<'a> Rem<&'a str> for DzenBuilder<'a> {
 impl<'a> From<&'a str> for DzenBuilder<'a> {
     fn from(s: &'a str) -> Self {
         Self::from_str(s)
+    }
+}
+
+impl<'a> From<&'a String> for DzenBuilder<'a> {
+    fn from(s: &'a String) -> Self {
+        Self::from_str(s.as_str())
     }
 }
