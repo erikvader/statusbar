@@ -22,8 +22,12 @@ impl TimerGenerator for CpuGen {
         Ok(())
     }
 
-    async fn update(&mut self, name: &str) -> Result<String> {
+    async fn update(&mut self) -> Result<()> {
         self.sys.refresh_cpu();
+        Ok(())
+    }
+
+    fn display(&self, name: &str) -> Result<String> {
         if self.detailed {
             let ps = self.sys.get_processors()
                 .iter()
@@ -44,8 +48,8 @@ impl TimerGenerator for CpuGen {
         }
     }
 
-    async fn on_msg(&mut self, _msg: String) -> Result<()> {
+    async fn on_msg(&mut self, _msg: String) -> Result<bool> {
         self.detailed = !self.detailed;
-        Ok(())
+        Ok(false)
     }
 }

@@ -12,8 +12,12 @@ impl RamGen {
 
 #[async_trait]
 impl TimerGenerator for RamGen {
-    async fn update(&mut self, _name: &str) -> Result<String> {
+    async fn update(&mut self) -> Result<()> {
         self.sys.refresh_memory();
+        Ok(())
+    }
+
+    fn display(&self, _name: &str) -> Result<String> {
         let usage = ((self.sys.get_used_memory() as f64 / self.sys.get_total_memory() as f64) * 100.0).round();
         let swap = self.sys.get_used_swap();
         let swap_str = if swap > 0 {

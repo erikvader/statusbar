@@ -54,8 +54,12 @@ impl TimerGenerator for NetGen {
         Ok(())
     }
 
-    async fn update(&mut self, name: &str) -> Result<String> {
+    async fn update(&mut self) -> Result<()> {
         self.sys.refresh_networks();
+        Ok(())
+    }
+
+    fn display(&self, name: &str) -> Result<String> {
         let cur_if = self.interfaces[self.cur_if].as_str();
         let net = self.sys.get_networks()
             .into_iter()
@@ -81,19 +85,19 @@ impl TimerGenerator for NetGen {
         Ok(o)
     }
 
-    async fn on_msg(&mut self, msg: String) -> Result<()> {
+    async fn on_msg(&mut self, msg: String) -> Result<bool> {
         match msg.as_str() {
-            "click 1" => {
+            "click 3" => {
                 self.cur_if += 1;
                 self.cur_if %= self.interfaces.len();
             },
-            "click 3" => {
+            "click 1" => {
                 self.total = !self.total;
             },
             _ => {
                 eprintln!("got unexpected message");
             }
         }
-        Ok(())
+        Ok(false)
     }
 }

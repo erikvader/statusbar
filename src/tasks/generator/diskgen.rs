@@ -51,8 +51,12 @@ impl TimerGenerator for DiskGen {
         Ok(())
     }
 
-    async fn update(&mut self, name: &str) -> Result<String> {
+    async fn update(&mut self) -> Result<()> {
         self.sys.refresh_disks();
+        Ok(())
+    }
+
+    fn display(&self, name: &str) -> Result<String> {
         let cur_disk = self.disks[self.cur_disk].as_str();
         let cur_path = Path::new(cur_disk);
         let disk = self.sys.get_disks()
@@ -77,7 +81,7 @@ impl TimerGenerator for DiskGen {
         Ok(o)
     }
 
-    async fn on_msg(&mut self, msg: String) -> Result<()> {
+    async fn on_msg(&mut self, msg: String) -> Result<bool> {
         match msg.as_str() {
             "click 1" => {
                 self.cur_disk += 1;
@@ -87,7 +91,7 @@ impl TimerGenerator for DiskGen {
                 eprintln!("got unexpected message");
             }
         }
-        Ok(())
+        Ok(false)
     }
 
     fn get_delay(&self, arg: &Option<GenArg>) -> u64 {
