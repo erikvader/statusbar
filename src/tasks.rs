@@ -30,3 +30,14 @@ impl ExitReason {
         rec(self, other, false)
     }
 }
+
+impl<E> From<E> for ExitReason
+where E: std::error::Error
+{
+    fn from(e: E) -> Self {
+        // TODO: faktiskt hantera (typ wrappa i ExitReason) istället
+        // för att skriva ut.
+        eprintln!("got the error '{}' and converted it to ExitReason::Error", e);
+        ExitReason::Error
+    }
+}

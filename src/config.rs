@@ -14,6 +14,8 @@ pub fn config() -> bar::Result {
         .add_bar(BB::new("DisplayPort-0")
                  .add_left(GB::new(GT::CPU))
                  .add_left(GB::new(GT::RAM))
+                 .add_right(GB::new(GT::IP)
+                            .argument("enp4s0"))
                  .add_right(GB::new(GT::TEMP)
                             .argument("Package id 0"))
                  .add_right(GB::new(GT::TEMP)

@@ -9,12 +9,6 @@ macro_rules! unwrap_er {
     }
 }
 
-macro_rules! to_rer {
-    ($e:expr) => {
-        $e.map_err(|_| ExitReason::Error)
-    }
-}
-
 pub mod echogen;
 pub mod ramgen;
 pub mod cpugen;
@@ -22,6 +16,7 @@ pub mod timegen;
 pub mod netgen;
 pub mod diskgen;
 pub mod tempgen;
+pub mod ipgen;
 
 use tokio;
 use tokio::sync::mpsc;
@@ -43,6 +38,7 @@ pub enum GenType {
     NET,
     DISK,
     TEMP,
+    IP,
 }
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash)]
@@ -140,5 +136,6 @@ pub fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
         GenType::NET  => Box::new(netgen::NetGen::new()),
         GenType::DISK => Box::new(diskgen::DiskGen::new()),
         GenType::TEMP => Box::new(tempgen::TempGen::new()),
+        GenType::IP   => Box::new(ipgen::IpGen::new()),
     }
 }
