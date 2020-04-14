@@ -32,12 +32,11 @@ impl ExitReason {
 }
 
 impl<E> From<E> for ExitReason
-where E: std::error::Error
+where E: std::fmt::Display
 {
     fn from(e: E) -> Self {
-        // TODO: faktiskt hantera (typ wrappa i ExitReason) istället
-        // för att skriva ut.
-        eprintln!("got the error '{}' and converted it to ExitReason::Error", e);
+        // TODO: don't just print
+        println!("got error '{}', converted it to ExitReason::Error", e);
         ExitReason::Error
     }
 }

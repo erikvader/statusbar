@@ -97,7 +97,7 @@ impl<G: TimerGenerator + Sync + Send> Generator for G {
         unwrap_er!(self.init(&arg).await);
         let mut run_update = true;
         let mut delayer = delay_for(Duration::from_secs(0));
-        loop {
+        let reason = loop {
             if run_update {
                 unwrap_er!(self.update().await);
                 run_update = false;
@@ -106,7 +106,7 @@ impl<G: TimerGenerator + Sync + Send> Generator for G {
             }
             let s = unwrap_er!(self.display(&name));
             if let Err(_) = to_printer.send((id, s)) {
-                break;
+                break ExitReason::Error;
             }
             let msg = select! {
                 _ = &mut delayer => {
@@ -114,16 +114,16 @@ impl<G: TimerGenerator + Sync + Send> Generator for G {
                     None
                 },
                 msg = from_pipo.recv() => match msg {
-                    None => break,
+                    None => break ExitReason::Normal,
                     Some(m) => Some(m)
                 }
             };
             if let Some(m) = msg {
                 run_update = unwrap_er!(self.on_msg(m).await);
             }
-        }
+        };
         unwrap_er!(self.finalize().await);
-        ExitReason::Normal
+        reason
     }
 }
 

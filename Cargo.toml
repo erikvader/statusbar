@@ -16,3 +16,6 @@ nix = "^0.17.0"
 tokio = {version = "^0.2.13", features = ["full"]}
 x11rb = {version = "^0.4.1", features = ["randr", "xinerama"]}
 chrono = "^0.4.11"
+dbus = "^0.8.2"
+dbus-tokio = "^0.5.1"
+simple-error = "^0.2.1"

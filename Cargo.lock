@@ -151,6 +151,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "dbus"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38f8875bb7afbc20dec12db09e18af3dcbd672b08592d2932950326a6437c616"
+dependencies = [
+ "futures",
+ "libc",
+ "libdbus-sys",
+]
+
+[[package]]
+name = "dbus-tokio"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "641f98f32585b8a8cc5d88c6c55a8f6cdf60740baab17c57d59b9b662c73f522"
+dependencies = [
+ "dbus",
+ "mio",
+ "tokio",
+]
+
+[[package]]
 name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -348,6 +370,15 @@ name = "libc"
 version = "0.2.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dea0c0405123bba743ee3f91f49b1c7cfb684eef0da0a50110f758ccf24cdff0"
+
+[[package]]
+name = "libdbus-sys"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc12a3bc971424edbbf7edaf6e5740483444db63aa8e23d3751ff12a30f306f0"
+dependencies = [
+ "pkg-config",
+]
 
 [[package]]
 name = "log"
@@ -606,6 +637,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "simple-error"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "339844c9af2d844b9230bb28e8f819a7790cbf20a29b5cbd2b59916a03a1ef51"
+
+[[package]]
 name = "slab"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -630,9 +667,12 @@ dependencies = [
  "async-std",
  "async-trait",
  "chrono",
+ "dbus",
+ "dbus-tokio",
  "futures",
  "itertools",
  "nix",
+ "simple-error",
  "sysinfo",
  "tokio",
  "x11rb",
