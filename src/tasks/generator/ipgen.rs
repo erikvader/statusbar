@@ -88,10 +88,9 @@ where C: DN::NonblockReply
     let devp = DN::Proxy::new(BUSNAME, path, Duration::from_secs(5), conn.clone());
     let (ap_prox,): (dbus::arg::Variant<Path>,) = devp.method_call(PROP_IF, "Get", (WIFI_IF, "ActiveAccessPoint",)).await?;
 
-    let app = DN::Proxy::new("org.freedesktop.NetworkManager", ap_prox.0, Duration::from_secs(5), conn);
-    // // TODO: figure out type
-    let (ssid,): (dbus::arg::Variant<String>,) = app.method_call(PROP_IF, "Get", (AP_IF, "Ssid",)).await?;
-    Ok(ssid.0)
+    let app = DN::Proxy::new(BUSNAME, ap_prox.0, Duration::from_secs(5), conn);
+    let (ssid,): (dbus::arg::Variant<Vec<u8>>,) = app.method_call(PROP_IF, "Get", (AP_IF, "Ssid",)).await?;
+    Ok(String::from_utf8(ssid.0).unwrap_or("decode error".to_string()))
 }
 
 async fn get_network_state<C>(conn: Arc<C>) -> Result<u32>
