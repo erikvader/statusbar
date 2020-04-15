@@ -669,6 +669,7 @@ dependencies = [
  "chrono",
  "dbus",
  "dbus-tokio",
+ "either",
  "futures",
  "itertools",
  "nix",

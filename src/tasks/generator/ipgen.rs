@@ -1,9 +1,7 @@
 use async_trait::async_trait;
-use super::{GenArg,ExitReason,Msg,GenId,Generator};
+use super::{GenArg,ExitReason,DBusGenerator};
+use super::Result as EResult;
 use crate::dzen_format::DzenBuilder;
-use tokio::sync::mpsc;
-use tokio::sync::broadcast;
-use tokio::stream::StreamExt;
 use dbus_tokio::connection;
 use dbus::nonblock as DN;
 use std::time::Duration;
@@ -13,6 +11,7 @@ use dbus::strings::Path;
 use std::collections::HashMap;
 use simple_error::SimpleError;
 use dbus::arg::RefArg;
+use dbus_tokio::connection::IOResource;
 
 // https://developer.gnome.org/NetworkManager/stable/index.html
 
@@ -27,11 +26,19 @@ const AP_IF: &str = "org.freedesktop.NetworkManager.AccessPoint";
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-pub struct IpGen;
+pub struct IpGen {
+    show_ssid: bool,
+    state: u32,
+    interface: String
+}
 
 impl IpGen {
     pub fn new() -> Self {
-        IpGen
+        IpGen{
+            show_ssid: true,
+            state: 0,
+            interface: "".to_string()
+        }
     }
 }
 
@@ -112,7 +119,7 @@ where C: DN::NonblockReply
 async fn get_string<C>(
     interface: &str,
     state: u32,
-    show_ssid: &bool,
+    show_ssid: bool,
     name: &str,
     conn: Arc<C>
 ) -> String
@@ -126,106 +133,95 @@ where C: DN::NonblockReply
     }).add(" ");
 
     let to_show;
-    if let Ok(devpath) = get_device(interface, conn.clone()).await {
-        let show_ssid = *show_ssid && {
-            match is_device_wifi(&devpath, conn.clone()).await {
-                Ok(w) => w,
-                Err(_) => false
-            }
-        };
+    match get_device(interface, conn.clone()).await {
+        Err(e) => {
+            to_show = "no device".to_string();
+            eprintln!("no device cuz {}", e);
+        }
+        Ok(devpath) => {
+            let show_ssid = show_ssid && {
+                match is_device_wifi(&devpath, conn.clone()).await {
+                    Ok(w) => w,
+                    Err(e) => {
+                        eprintln!("not wifi cuz {}", e);
+                        false
+                    }
+                }
+            };
 
-        if show_ssid {
-            if let Ok(ssid) = get_device_ssid(&devpath, conn.clone()).await {
-                to_show = ssid;
+            if show_ssid {
+                match get_device_ssid(&devpath, conn.clone()).await {
+                    Err(e) => {
+                        to_show = "no ssid".to_string();
+                        eprintln!("no ssid cuz {}", e);
+                    }
+                    Ok(ssid) => {
+                        to_show = ssid;
+                    }
+                }
             } else {
-                to_show = "no ssid".to_string();
-            }
-        } else {
-            if let Ok(i) = get_device_ip(&devpath, conn).await {
-                to_show = i;
-            } else {
-                to_show = "no ip".to_string();
+                match get_device_ip(&devpath, conn).await {
+                    Err(e) => {
+                        to_show = "no ip".to_string();
+                        eprintln!("no ip cuz {}", e);
+                    }
+                    Ok(i) => {
+                        to_show = i;
+                    }
+                }
             }
         }
-    } else {
-        to_show = "no device".to_string();
     }
 
     bu.add(&to_show).name_click("1", name).to_string()
 }
 
 #[async_trait]
-impl Generator for IpGen {
-    async fn start(
-        &mut self,
-        to_printer: broadcast::Sender<Msg>,
-        mut from_pipo: mpsc::Receiver<String>,
-        id: GenId,
-        arg: Option<GenArg>,
-        name: String
-    ) -> ExitReason
-    {
+impl DBusGenerator for IpGen {
+    fn get_connection(&self) -> EResult<(IOResource<DN::SyncConnection>, Arc<DN::SyncConnection>)> {
+        Ok(connection::new_system_sync()?)
+    }
+
+    async fn init(&mut self, arg: &Option<GenArg>, conn: Arc<DN::SyncConnection>) -> EResult<()> {
         // find interface from argument
-        let interface =
+        self.interface =
             if let Some(GenArg{arg: Some(iface), ..}) = arg {
-                iface
+                iface.to_string()
             } else {
                 eprintln!("I want an interface as argument");
-                return ExitReason::Error;
+                return Err(ExitReason::Error);
             };
 
-        // connect to dbus
-        let (mut resource, conn) = unwrap_er!(connection::new_system_sync()
-                                          .map_err(|e| {
-                                              eprintln!("dbus: {}", e);
-                                              ExitReason::Error
-                                          }));
+        // TODO: use a state that indicates that networkmanager is
+        // enabled/active if this fails.
+        self.state = get_network_state(conn).await?;
 
-        // declare main loop
-        let main_loop = async {
-            let sig = dbus::message::MatchRule::new_signal(ROOT_IF, "StateChanged");
-            let (mm, mut stream) = conn.add_match(sig).await?.stream();
+        Ok(())
+    }
 
-            // TODO: use a state that indicates that networkmanager is
-            // enabled/active if this fails.
-            let mut state: u32 = get_network_state(conn.clone()).await?;
-            let mut show_ssid = true;
+    async fn update(&mut self, conn: Arc<DN::SyncConnection>, name: &str) -> EResult<String> {
+        Ok(get_string(&self.interface, self.state, self.show_ssid, name, conn.clone()).await)
+    }
 
-            loop {
-                let s = get_string(&interface, state, &show_ssid, &name, conn.clone()).await;
-                if let Err(_) = to_printer.send((id, s)) {
-                    return Err(ExitReason::Error);
-                }
+    fn interesting_signals(&self) -> Vec<dbus::message::MatchRule<'static>> {
+        let sig = dbus::message::MatchRule::new_signal(ROOT_IF, "StateChanged");
+        vec!(sig)
+    }
 
-                tokio::select! {
-                    msg = from_pipo.recv() => match msg {
-                        None => break,
-                        Some(s) if s == "click 1" => show_ssid = !show_ssid,
-                        _ => ()
-                    },
-                    Some((_, (s,))) = stream.next() => {
-                        state = s;
-                    }
-                }
-            };
-
-            conn.remove_match(mm.token()).await?;
-
-            Ok(())
-        };
-
-        // wait for main loop or dbus disconnect
-        let ret = tokio::select! {
-            err = &mut resource => {
-                eprintln!("dbus connection lost. '{}'", err);
-                Err(ExitReason::Error)
-            },
-            ret = main_loop => ret
-        };
-
-        match ret {
-            Ok(_)   => ExitReason::Normal,
-            Err(er) => er
+    async fn handle_signal(&mut self, _sig: usize, data: dbus::message::Message) -> EResult<()> {
+        if let Some(s) = data.get1() {
+            self.state = s;
+        } else {
+            eprintln!("signal didn't contain the new state");
         }
+        Ok(())
+    }
+
+    async fn handle_msg(&mut self, msg: String) -> EResult<()> {
+        if msg == "click 1" {
+            println!("aposdkopaksd");
+            self.show_ssid = !self.show_ssid;
+        }
+        Ok(())
     }
 }
