@@ -36,15 +36,14 @@ impl<'a> Parsed<'a> {
         }
     }
 
-    pub fn map_tag<F>(&mut self, f: F)
-    where F: Fn(&str, &mut Cow<'a, str>)
+    pub fn map_tag<F,T>(&mut self, f: F)
+    where F: Fn(&str, &str) -> T,
+          T: Into<Cow<'a, str>>
     {
         for i in 0..(self.tokens.len() - 2) {
             if self.tokens[i].as_ref().starts_with("^") {
-                let (l, r) = self.tokens.split_at_mut(i+1);
-                let t = &l[l.len()-1];
-                let t_name = t[1..t.len()-1].as_ref();
-                f(t_name, &mut r[0]);
+                let n = f(&self.tokens[i], &self.tokens[i+1]);
+                self.tokens[i+1] = n.into();
             }
         }
     }
