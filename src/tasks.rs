@@ -7,6 +7,9 @@ use crate::tasks::generator::GenId;
 
 pub type Msg = (GenId, String);
 
+// TODO: add a "there was an error but not fatal enough to terminate
+// the whole program" which will output some error message as
+// generator output.
 #[derive(PartialEq,Eq,Clone,Copy,Debug)]
 pub enum ExitReason {
     Signal,

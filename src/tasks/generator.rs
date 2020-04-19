@@ -17,6 +17,7 @@ pub mod netgen;
 pub mod diskgen;
 pub mod tempgen;
 pub mod ipgen;
+pub mod folgen;
 
 use dbus_tokio::connection::IOResource;
 use tokio;
@@ -45,6 +46,7 @@ pub enum GenType {
     DISK,
     TEMP,
     IP,
+    FOL,
 }
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash)]
@@ -176,18 +178,18 @@ where G: DBusGenerator + Sync + Send
 
             let mut stream = select_all(sigs_streams);
 
-            loop {
+            let res = loop {
                 let s = self.0.update(conn.clone(), name.as_str()).await?;
                 if let Err(_) = to_printer.send((id, s)) {
-                    return Err(ExitReason::Error);
+                    break Err(ExitReason::Error);
                 }
 
                 let msg = select! {
                     msg = from_pipo.recv() => match msg {
-                        None => break,
+                        None => break Ok(()),
                         Some(s) => Right(s),
                     },
-                    x = stream.next() => Left(x)
+                    x = stream.next(), if !sigs_tokens.is_empty() => Left(x)
                 };
 
                 match msg {
@@ -197,7 +199,10 @@ where G: DBusGenerator + Sync + Send
                     Right(s) => {
                         self.0.handle_msg(s).await?;
                     }
-                    _ => unreachable!()
+                    Left(None) => {
+                        eprintln!("can't wait on more DBus signals?");
+                        break Err(ExitReason::Error);
+                    }
                 }
             };
 
@@ -205,7 +210,7 @@ where G: DBusGenerator + Sync + Send
                 conn.remove_match(t.token()).await?;
             }
 
-            Ok(())
+            res
         };
 
         // wait for main loop or dbus disconnect
@@ -234,5 +239,6 @@ pub fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
         GenType::DISK => Box::new(TimerWrap(diskgen::DiskGen::new())),
         GenType::TEMP => Box::new(TimerWrap(tempgen::TempGen::new())),
         GenType::IP   => Box::new(DBusWrap(ipgen::IpGen::new())),
+        GenType::FOL  => Box::new(folgen::FolGen::new()),
     }
 }

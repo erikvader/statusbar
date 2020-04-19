@@ -1,9 +1,12 @@
 pub mod utils;
+pub mod parser;
 
 use std::collections::VecDeque;
 use std::ops::{Add,Rem};
 use std::fmt;
 
+// TODO: Cow should add the ability to add String without needing to
+// borrow it from somewhere else.
 pub struct DzenBuilder<'a> {
     work: VecDeque<&'a str>,
     res: Vec<&'a str>

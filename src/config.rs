@@ -5,15 +5,18 @@ use super::bar::GenBuilder as GB;
 use super::tasks::generator::GenType as GT;
 use super::dzen_format::DzenBuilder as DB;
 
-pub const FIFO_PATH: &str = "/tmp/statusbar_fifo";
-pub const DZEN_FONT: &str = "xft:Ubuntu Mono:pixelsize=14:antialias=true:hinting=true";
-pub const ICON_PATH: &str = "~/.local/share/statusbar";
+pub const FIFO_PATH:   &str = "/tmp/statusbar_fifo";
+pub const DZEN_FONT:   &str = "xft:Ubuntu Mono:pixelsize=14:antialias=true:hinting=true";
+pub const ICON_PATH:   &str = "~/Documents/statusbar/icons";
+pub const SCRIPT_PATH: &str = "~/Documents/statusbar/scripts";
 
 pub fn config() -> bar::Result {
     SB::new()
         .add_bar(BB::new("DisplayPort-0")
                  .add_left(GB::new(GT::CPU))
                  .add_left(GB::new(GT::RAM))
+                 .add_right(GB::new(GT::FOL)
+                            .argument("pulseaudio.py"))
                  .add_right(GB::new(GT::IP)
                             .argument("enp4s0"))
                  .add_right(GB::new(GT::TEMP)

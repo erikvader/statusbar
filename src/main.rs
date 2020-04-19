@@ -13,8 +13,6 @@ use tasks::main_task;
 // TODO: resten utav generatorer
 // - battery
 // - sh on click/msg
-// - volume https://docs.rs/libpulse-binding/2.15.0/libpulse_binding/, https://docs.rs/alsa/0.4.1/alsa/index.html
-// TODO: add icon option to GenBuilder
 // TODO: pacman updates
 
 pub static mut HOME: String = String::new();
