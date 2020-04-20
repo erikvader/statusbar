@@ -15,6 +15,8 @@ pub fn config() -> bar::Result {
         .add_bar(BB::new("DisplayPort-0")
                  .add_left(GB::new(GT::CPU))
                  .add_left(GB::new(GT::RAM))
+                 .add_right(GB::new(GT::ONE)
+                            .argument("pacman.sh"))
                  .add_right(GB::new(GT::FOL)
                             .argument("pulseaudio.py"))
                  .add_right(GB::new(GT::IP)

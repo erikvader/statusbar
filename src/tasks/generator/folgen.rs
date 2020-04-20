@@ -35,26 +35,13 @@ impl Generator for FolGen {
                 return ExitReason::Error;
             };
 
-        let mut path = std::env::var("PATH").expect("couldn't get PATH");
-        path.insert_str(0, ":");
-        path.insert_str(0, crate::config::SCRIPT_PATH);
-        if path.starts_with("~") {
-            path.replace_range(..1, unsafe{&crate::HOME});
-        }
-
-        let proc = match Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .env("PATH", path)
-            .kill_on_drop(true)
-            .stdout(std::process::Stdio::piped())
-            .spawn() {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("{}", e);
-                    return ExitReason::Error;
-                }
-            };
+        let proc = match super::onegen::spawn(&cmd, false) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("{}", e);
+                return ExitReason::Error;
+            }
+        };
 
         let mut stdout = BufReader::new(proc.stdout.unwrap()).lines();
 

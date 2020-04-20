@@ -18,6 +18,7 @@ pub mod diskgen;
 pub mod tempgen;
 pub mod ipgen;
 pub mod folgen;
+pub mod onegen;
 
 use dbus_tokio::connection::IOResource;
 use tokio;
@@ -47,6 +48,7 @@ pub enum GenType {
     TEMP,
     IP,
     FOL,
+    ONE,
 }
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash)]
@@ -240,5 +242,6 @@ pub fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
         GenType::TEMP => Box::new(TimerWrap(tempgen::TempGen::new())),
         GenType::IP   => Box::new(DBusWrap(ipgen::IpGen::new())),
         GenType::FOL  => Box::new(folgen::FolGen::new()),
+        GenType::ONE  => Box::new(onegen::OneGen::new()),
     }
 }
