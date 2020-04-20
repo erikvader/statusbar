@@ -5,6 +5,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::select;
 use tokio::process::Command;
 use tokio::time::{self, Duration, Instant};
+use std::sync::Arc;
 use crate::config::*;
 use crate::bar::*;
 use crate::tasks::ExitReason;
@@ -81,17 +82,19 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
         .unwrap();
 
     // spawn tray
-    let _tray = if config.wants_tray() {
-        time::delay_for(Duration::from_secs(2)).await;
-        spawn_tray()
-            .map_err(|e| {
-                eprintln!("coudln't spawn trayer '{}'", e);
-                return ExitReason::Error;
-            })
-            .ok()
-    } else {
-        None
-    };
+    let tray = Arc::new(std::sync::Mutex::new(None));
+    if config.wants_tray() {
+        let tray2 = tray.clone();
+        tokio::spawn(async move {
+            time::delay_for(Duration::from_secs(2)).await;
+            let t = spawn_tray()
+                .map_err(|e| {
+                    eprintln!("coudln't spawn trayer '{}'", e);
+                })
+                .ok();
+            *tray2.lock().unwrap() = t;
+        });
+    }
 
     let mut lstdin = dzenl.stdin.unwrap();
     let mut rstdin = dzenr.stdin.unwrap();
