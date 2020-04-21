@@ -7,6 +7,7 @@ use tokio::sync::broadcast;
 use async_trait::async_trait;
 use super::*;
 use crate::tasks::ExitReason;
+use crate::tasks::external::fix_dzen_string;
 use crate::dzen_format::DzenBuilder;
 
 pub struct OneGen;
@@ -93,8 +94,9 @@ impl Generator for OneGen {
             if let Some(l) = line {
                 match l {
                     Ok(Some(x)) => {
-                        let y = DzenBuilder::from(&x).name_click("1", &name).to_string();
-                        if let Err(_) = to_printer.send((id, y)) {
+                        let fixed = fix_dzen_string(x);
+                        let clicked = DzenBuilder::from(&fixed).name_click("1", &name).to_string();
+                        if let Err(_) = to_printer.send((id, clicked)) {
                             break ExitReason::Error;
                         }
                     }

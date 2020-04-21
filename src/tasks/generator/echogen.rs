@@ -4,6 +4,7 @@ use tokio::sync::broadcast;
 use async_trait::async_trait;
 use super::*;
 use crate::tasks::ExitReason;
+use crate::tasks::external::fix_dzen_string;
 
 pub struct EchoGen;
 
@@ -17,7 +18,7 @@ impl Generator for EchoGen {
                    _name: String) -> ExitReason
     {
         while let Some(inp) = from_pipo.recv().await {
-            if let Err(_) = to_printer.send((id, inp)) {
+            if let Err(_) = to_printer.send((id, fix_dzen_string(inp))) {
                 return ExitReason::Error;
             }
         }

@@ -58,11 +58,11 @@ impl<'a> DzenBuilder<'a> {
     }
 
     pub fn colorize(self, color: &'a str) -> Self {
-        self.surround(&["^fg(", color, ")"], &["^fg()"])
+        self.surround(&["^fg(", crate::config::theme(color), ")"], &["^fg()"])
     }
 
     pub fn background(self, color: &'a str) -> Self {
-        self.surround(&["^bg(", color, ")"], &["^bg()"])
+        self.surround(&["^bg(", crate::config::theme(color), ")"], &["^bg()"])
     }
 
     pub fn click(self, button: &'a str, command: &[&'a str]) -> Self {

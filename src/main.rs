@@ -12,8 +12,6 @@ use tasks::main_task;
 
 // TODO: resten utav generatorer
 // - battery
-// - sh on click/msg
-// TODO: pacman updates
 
 pub static mut HOME: String = String::new();
 

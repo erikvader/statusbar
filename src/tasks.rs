@@ -2,6 +2,7 @@ pub mod generator;
 pub mod dzen;
 pub mod main_task;
 pub mod pipo;
+mod external;
 
 use crate::tasks::generator::GenId;
 

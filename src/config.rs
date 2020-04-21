@@ -10,6 +10,14 @@ pub const DZEN_FONT:   &str = "xft:Ubuntu Mono:pixelsize=14:antialias=true:hinti
 pub const ICON_PATH:   &str = "~/Documents/statusbar/icons";
 pub const SCRIPT_PATH: &str = "~/Documents/statusbar/scripts";
 
+pub fn theme(c: &str) -> &str {
+    match c {
+        "fg" => "#dfdfdf",
+        "bg" => "#333333",
+        _    => c,
+    }
+}
+
 pub fn config() -> bar::Result {
     SB::new()
         .add_bar(BB::new("DisplayPort-0")

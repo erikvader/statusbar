@@ -6,6 +6,7 @@ use tokio::sync::mpsc;
 use tokio::sync::broadcast;
 use async_trait::async_trait;
 use super::*;
+use crate::tasks::external::fix_dzen_string;
 use crate::tasks::ExitReason;
 
 pub struct FolGen;
@@ -59,7 +60,7 @@ impl Generator for FolGen {
             if let Some(x) = line {
                 match x {
                     Ok(Some(l)) => {
-                        if let Err(_) = to_printer.send((id, l)) {
+                        if let Err(_) = to_printer.send((id, fix_dzen_string(l))) {
                             break ExitReason::Error;
                         }
                     }

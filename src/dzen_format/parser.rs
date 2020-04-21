@@ -36,16 +36,26 @@ impl<'a> Parsed<'a> {
         }
     }
 
-    pub fn map_tag<F,T>(&mut self, f: F)
-    where F: Fn(&str, &str) -> T,
+    pub fn map_tag<F,T>(&mut self, f: F) -> &mut Self
+    where F: Fn(&str, &'a str) -> T,
           T: Into<Cow<'a, str>>
     {
+        if self.tokens.len() < 3 {
+            return self;
+        }
+
         for i in 0..(self.tokens.len() - 2) {
             if self.tokens[i].as_ref().starts_with("^") {
-                let n = f(&self.tokens[i], &self.tokens[i+1]);
-                self.tokens[i+1] = n.into();
+                if let Cow::Borrowed(c) = self.tokens[i+1] {
+                    let tag_name = &self.tokens[i];
+                    let n = f(&tag_name[1..tag_name.len()-1], c);
+                    self.tokens[i+1] = n.into();
+                } else {
+                    panic!("can't run map_tag twice");
+                }
             }
         }
+        self
     }
 
     pub fn to_string(self) -> String {
