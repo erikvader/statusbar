@@ -9,7 +9,7 @@ impl<'a> DzenBuilder<'a> {
                                    FIFO_PATH))
     }
 
-    pub fn push_color_step(self, num: i32, steps: &[(i32, &'a str)]) -> Self {
+    pub fn add_color_step(self, num: i32, steps: &[(i32, &'a str)]) -> Self {
         let mut color = None;
         for (lim, col) in steps.iter() {
             if num >= *lim {
@@ -24,6 +24,17 @@ impl<'a> DzenBuilder<'a> {
             tmp.colorize(*col)
         } else {
             tmp
+        }
+    }
+
+    pub fn add_trunc(self, max_len: usize, mut s: String) -> Self {
+        if s.chars().count() > max_len {
+            let stop = s.char_indices().into_iter().take(max_len).last().expect("max_len can't be 0").0;
+            s.truncate(stop);
+            self.add(s)
+                .add("…")
+        } else {
+            self.add(s)
         }
     }
 }
