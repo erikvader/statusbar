@@ -20,6 +20,14 @@ where S: AsRef<str>
     }
 }
 
+pub fn icon_theme<S>(c: S) -> Option<&'static str>
+where S: AsRef<str>
+{
+    match c.as_ref() {
+        _ => None,
+    }
+}
+
 pub fn config() -> bar::Result {
     SB::new()
         .add_bar(BB::new("DisplayPort-0")

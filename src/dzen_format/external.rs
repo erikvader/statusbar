@@ -8,7 +8,8 @@ where S: AsRef<str>
     let mut p = parser::Parsed::parse(s.as_ref());
     p.map_tag(|tag, cont| match tag {
         "i" => {
-            let mut pathed = String::new() + crate::config::ICON_PATH + "/" + cont;
+            let themed = crate::config::icon_theme(cont).unwrap_or(cont);
+            let mut pathed = String::new() + crate::config::ICON_PATH + "/" + themed;
             if pathed.starts_with("~") {
                 pathed.replace_range(..1, unsafe{&crate::HOME});
             }

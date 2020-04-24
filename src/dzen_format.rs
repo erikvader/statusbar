@@ -182,7 +182,11 @@ impl<'a> DzenBuilder<'a> {
             tmp.push(path.into());
         }
         tmp.push("/".into());
-        tmp.push(icon);
+        if let Some(i) = crate::config::icon_theme(icon.as_ref()) {
+            tmp.push(Cow::from(i));
+        } else {
+            tmp.push(icon);
+        }
         tmp.push(")".into());
         tmp
     }

@@ -12,7 +12,6 @@ use tasks::main_task;
 
 // TODO: resten utav generatorer
 // - battery
-// TODO: en theme för ikoner också.
 // TODO: fixa presentationen utav alla generators
 
 pub static mut HOME: String = String::new();
