@@ -121,11 +121,12 @@ async fn get_string<C>(
     state: u32,
     show_ssid: bool,
     name: &str,
-    conn: Arc<C>
+    conn: Arc<C>,
+    arg: &GenArg
 ) -> String
 where C: DN::NonblockReply
 {
-    let mut bu = DzenBuilder::new();
+    let mut bu = arg.get_builder();
     bu = bu.add(match state {
         70 => "C",
         60 => "L",
@@ -173,7 +174,7 @@ where C: DN::NonblockReply
         }
     }
 
-    bu.add(&to_show).name_click("1", name).to_string()
+    bu.add(&to_show).name_click(1, name).to_string()
 }
 
 #[async_trait]
@@ -182,10 +183,10 @@ impl DBusGenerator for IpGen {
         Ok(connection::new_system_sync()?)
     }
 
-    async fn init(&mut self, arg: &Option<GenArg>, conn: Arc<DN::SyncConnection>) -> EResult<()> {
+    async fn init(&mut self, arg: &GenArg, conn: Arc<DN::SyncConnection>) -> EResult<()> {
         // find interface from argument
         self.interface =
-            if let Some(GenArg{arg: Some(iface), ..}) = arg {
+            if let Some(iface) = &arg.arg {
                 iface.to_string()
             } else {
                 eprintln!("I want an interface as argument");
@@ -199,8 +200,8 @@ impl DBusGenerator for IpGen {
         Ok(())
     }
 
-    async fn update(&mut self, conn: Arc<DN::SyncConnection>, name: &str) -> EResult<String> {
-        Ok(get_string(&self.interface, self.state, self.show_ssid, name, conn.clone()).await)
+    async fn update(&mut self, conn: Arc<DN::SyncConnection>, name: &str, arg: &GenArg) -> EResult<String> {
+        Ok(get_string(&self.interface, self.state, self.show_ssid, name, conn.clone(), arg).await)
     }
 
     fn interesting_signals(&self) -> Vec<dbus::message::MatchRule<'static>> {
@@ -219,7 +220,6 @@ impl DBusGenerator for IpGen {
 
     async fn handle_msg(&mut self, msg: String) -> EResult<()> {
         if msg == "click 1" {
-            println!("aposdkopaksd");
             self.show_ssid = !self.show_ssid;
         }
         Ok(())

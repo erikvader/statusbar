@@ -16,11 +16,13 @@ use super::Msg;
 const ACC_DUR: Duration = Duration::from_millis(50);
 
 fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<tokio::process::Child> {
+    let fg = crate::config::theme("fg").unwrap_or("#ffffff");
+    let bg = crate::config::theme("bg").unwrap_or("#000000");
     Command::new("dzen2")
         .kill_on_drop(true)
         .stdin(std::process::Stdio::piped())
-        .args(&["-fg", crate::config::theme("fg")])
-        .args(&["-bg", crate::config::theme("bg")])
+        .args(&["-fg", fg])
+        .args(&["-bg", bg])
         .args(&["-fn", DZEN_FONT])
         .args(&["-h", "26"])
         .args(&["-xs", xin])

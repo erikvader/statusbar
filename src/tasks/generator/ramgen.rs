@@ -17,17 +17,23 @@ impl TimerGenerator for RamGen {
         Ok(())
     }
 
-    fn display(&self, _name: &str, arg: &Option<GenArg>) -> Result<String> {
+    fn display(&self, _name: &str, arg: &GenArg) -> Result<String> {
         let usage = ((self.sys.get_used_memory() as f64 / self.sys.get_total_memory() as f64) * 100.0).round();
+
+        let mut bu = arg.get_builder()
+            .add(usage.to_string())
+            .add("%");
+
         let swap = self.sys.get_used_swap();
-        let swap_str = if swap > 0 {
+        if swap > 0 {
             let total_swap = self.sys.get_total_swap() as f64;
             let perc = ((swap as f64 / total_swap) * 100.0).round();
-            format!(" ({}%)", perc)
-        } else {
-            "".to_string()
-        };
-        Ok(format!("{}%{}", usage, swap_str))
+            bu = bu.add(" (")
+                .add(perc.to_string())
+                .add(")");
+        }
+
+        Ok(bu.to_string())
     }
 }
 

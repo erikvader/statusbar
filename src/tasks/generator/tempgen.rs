@@ -22,14 +22,14 @@ impl TempGen {
 
 #[async_trait]
 impl TimerGenerator for TempGen {
-    async fn init(&mut self, arg: &Option<GenArg>) -> Result<()> {
+    async fn init(&mut self, arg: &GenArg) -> Result<()> {
         self.sys.refresh_components_list();
         let avail_comps = self.sys.get_components()
             .into_iter()
             .map(|c| c.get_label())
             .collect::<HashSet<&str>>();
 
-        if let Some(GenArg{arg: Some(a), ..}) = arg {
+        if let Some(a) = &arg.arg {
             if !avail_comps.contains(a.as_str()) {
                 eprintln!("{} does not seem to be a proper temp thingy", a);
                 eprintln!("you can choose from: {:?}", avail_comps);
@@ -47,7 +47,7 @@ impl TimerGenerator for TempGen {
         Ok(())
     }
 
-    fn display(&self, _name: &str, arg: &Option<GenArg>) -> Result<String> {
+    fn display(&self, _name: &str, arg: &GenArg) -> Result<String> {
         let comp = self.sys.get_components()
             .into_iter()
             .find(|c| c.get_label() == self.name)
@@ -56,7 +56,8 @@ impl TimerGenerator for TempGen {
         let temp = comp.get_temperature().trunc();
         // let max = comp.get_max();
 
-        let o = DzenBuilder::from(&temp.to_string())
+        let o = arg.get_builder()
+            .add(temp.to_string())
             .add("°C")
             .to_string();
 

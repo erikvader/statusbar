@@ -26,7 +26,7 @@ impl TempGen {
 
 #[async_trait]
 impl TimerGenerator for TempGen {
-    async fn init(&mut self, arg: &Option<GenArg>) -> Result<()> {
+    async fn init(&mut self, arg: &GenArg) -> Result<()> {
         let argname = if let Some(GenArg{arg: Some(a), ..}) = arg {
             a
         } else {
@@ -50,7 +50,7 @@ impl TimerGenerator for TempGen {
         Ok(())
     }
 
-    fn display(&self, name: &str, arg: &Option<GenArg>) -> Result<String> {
+    fn display(&self, name: &str, arg: &GenArg) -> Result<String> {
         Ok("".to_string())
     }
 

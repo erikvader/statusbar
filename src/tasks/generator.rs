@@ -80,6 +80,14 @@ impl GenArg {
     pub fn get_builder(&self) -> DzenBuilder<'_> {
         self.prepend.as_ref().map_or_else(|| DzenBuilder::new(), |b| b.clone())
     }
+
+    pub fn empty() -> Self {
+        GenArg {
+            timeout: None,
+            arg: None,
+            prepend: None,
+        }
+    }
 }
 
 struct TimerWrap<T>(T);
@@ -90,19 +98,19 @@ pub trait Generator {
     async fn start(&mut self, to_printer: broadcast::Sender<Msg>,
                    from_pipo: mpsc::Receiver<String>,
                    id: GenId,
-                   arg: Option<GenArg>,
+                   arg: GenArg,
                    name: String) -> ExitReason;
 }
 
 #[async_trait]
 pub trait TimerGenerator {
-    async fn init(&mut self, _arg: &Option<GenArg>) -> Result<()> {Ok(())}
+    async fn init(&mut self, _arg: &GenArg) -> Result<()> {Ok(())}
     async fn update(&mut self) -> Result<()>;
-    fn display(&self, name: &str, arg: &Option<GenArg>) -> Result<String>;
+    fn display(&self, name: &str, arg: &GenArg) -> Result<String>;
     async fn finalize(&mut self) -> Result<()> {Ok(())}
     async fn on_msg(&mut self, _msg: String) -> Result<bool> {Ok(false)}
-    fn get_delay(&self, arg: &Option<GenArg>) -> u64 {
-        arg.as_ref().and_then(|ga| ga.timeout).unwrap_or(5)
+    fn get_delay(&self, arg: &GenArg) -> u64 {
+        arg.timeout.unwrap_or(5)
     }
 }
 
@@ -112,7 +120,7 @@ impl<G: TimerGenerator + Sync + Send> Generator for TimerWrap<G> {
                    to_printer: broadcast::Sender<Msg>,
                    mut from_pipo: mpsc::Receiver<String>,
                    id: GenId,
-                   arg: Option<GenArg>,
+                   arg: GenArg,
                    name: String) -> ExitReason
     {
         unwrap_er!(self.0.init(&arg).await);
@@ -151,8 +159,8 @@ impl<G: TimerGenerator + Sync + Send> Generator for TimerWrap<G> {
 #[async_trait]
 pub trait DBusGenerator {
     fn get_connection(&self) -> Result<(IOResource<DN::SyncConnection>, Arc<DN::SyncConnection>)>;
-    async fn init(&mut self, _arg: &Option<GenArg>, _conn: Arc<DN::SyncConnection>) -> Result<()> {Ok(())}
-    async fn update(&mut self, conn: Arc<DN::SyncConnection>, name: &str) -> Result<String>;
+    async fn init(&mut self, _arg: &GenArg, _conn: Arc<DN::SyncConnection>) -> Result<()> {Ok(())}
+    async fn update(&mut self, conn: Arc<DN::SyncConnection>, name: &str, arg: &GenArg) -> Result<String>;
     fn interesting_signals(&self) -> Vec<dbus::message::MatchRule<'static>> {vec!()}
     async fn handle_signal(&mut self, _sig: usize, _data: dbus::message::Message) -> Result<()> {Ok(())}
     async fn handle_msg(&mut self, _msg: String) -> Result<()> {Ok(())}
@@ -167,7 +175,7 @@ where G: DBusGenerator + Sync + Send
         to_printer: broadcast::Sender<Msg>,
         mut from_pipo: mpsc::Receiver<String>,
         id: GenId,
-        arg: Option<GenArg>,
+        arg: GenArg,
         name: String
     ) -> ExitReason
     {
@@ -189,7 +197,7 @@ where G: DBusGenerator + Sync + Send
             let mut stream = select_all(sigs_streams);
 
             let res = loop {
-                let s = self.0.update(conn.clone(), name.as_str()).await?;
+                let s = self.0.update(conn.clone(), name.as_str(), &arg).await?;
                 if let Err(_) = to_printer.send((id, s)) {
                     break Err(ExitReason::Error);
                 }

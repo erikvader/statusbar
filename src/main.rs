@@ -13,10 +13,7 @@ use tasks::main_task;
 // TODO: resten utav generatorer
 // - battery
 // TODO: en theme för ikoner också.
-// TODO: en annotate för buildern som tar en DzenBuilder att prependa
-// (lägga till ikoner på det här viset). Då behövs ett sätt att
-// kopiera in en DzenBuilder in i en annan.
-// TODO: Option<GenArg> -> GenArg
+// TODO: fixa presentationen utav alla generators
 
 pub static mut HOME: String = String::new();
 

@@ -1,12 +1,11 @@
 use tokio;
-use tokio::process::Command;
 use tokio::io::BufReader;
 use tokio::io::AsyncBufReadExt;
 use tokio::sync::mpsc;
 use tokio::sync::broadcast;
 use async_trait::async_trait;
 use super::*;
-use crate::tasks::external::fix_dzen_string;
+use crate::dzen_format::external::fix_dzen_string;
 use crate::tasks::ExitReason;
 
 pub struct FolGen;
@@ -24,12 +23,12 @@ impl Generator for FolGen {
         to_printer: broadcast::Sender<Msg>,
         mut from_pipo: mpsc::Receiver<String>,
         id: GenId,
-        arg: Option<GenArg>,
+        arg: GenArg,
         _name: String
     ) -> ExitReason
     {
         let cmd =
-            if let Some(GenArg{arg: Some(cmd), ..}) = arg {
+            if let Some(cmd) = &arg.arg {
                 cmd.to_string()
             } else {
                 eprintln!("I want an command as argument");
@@ -60,7 +59,9 @@ impl Generator for FolGen {
             if let Some(x) = line {
                 match x {
                     Ok(Some(l)) => {
-                        if let Err(_) = to_printer.send((id, fix_dzen_string(l))) {
+                        let fixed = fix_dzen_string(l);
+                        let s = arg.get_builder().add(fixed).to_string();
+                        if let Err(_) = to_printer.send((id, s)) {
                             break ExitReason::Error;
                         }
                     }

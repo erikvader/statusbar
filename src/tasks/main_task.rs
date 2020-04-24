@@ -8,7 +8,7 @@ use tokio::task::JoinHandle;
 use tokio::sync::oneshot;
 use crate::bar::*;
 use super::ExitReason;
-use super::generator::genid_to_generator;
+use super::generator::{genid_to_generator,GenArg};
 use super::dzen::dzen_printer;
 use super::pipo::pipo_reader;
 
@@ -26,7 +26,7 @@ pub async fn main(mut setup: SetupConfig) -> ExitReason {
         for g in setup.iter() {
             let (pipo_send, pipo_recv) = mpsc::channel(MPSC_SIZE);
             let bs = broad_send.clone();
-            let a = args.remove(g);
+            let a = args.remove(g).unwrap_or(GenArg::empty());
             let gg = *g;
             let name = setup.get_name(*g).cloned().unwrap_or(g.to_string());
             let name2 = name.clone();

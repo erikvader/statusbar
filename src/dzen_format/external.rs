@@ -14,7 +14,8 @@ where S: AsRef<str>
             }
             Cow::from(pathed)
         }
-        "fg" | "bg" => Cow::from(crate::config::theme(cont)),
+        "fg" | "bg" => crate::config::theme(cont).map_or_else(|| Cow::from(cont),
+                                                              |s| Cow::from(s)),
         _ => Cow::from(cont)
     });
     p.to_string()

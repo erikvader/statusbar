@@ -24,7 +24,7 @@ impl DiskGen {
 
 #[async_trait]
 impl TimerGenerator for DiskGen {
-    async fn init(&mut self, arg: &Option<GenArg>) -> Result<()> {
+    async fn init(&mut self, arg: &GenArg) -> Result<()> {
         self.sys.refresh_disks_list();
         let avail_disk = self.sys.get_disks()
             .into_iter()
@@ -33,7 +33,7 @@ impl TimerGenerator for DiskGen {
             .map(|d| d.unwrap())
             .collect::<HashSet<&str>>();
 
-        if let Some(GenArg{arg: Some(a), ..}) = arg {
+        if let Some(a) = &arg.arg {
             for disk in a.split(",") {
                 if !avail_disk.contains(disk) {
                     eprintln!("{} does not seem to be a mount point", disk);
@@ -56,7 +56,7 @@ impl TimerGenerator for DiskGen {
         Ok(())
     }
 
-    fn display(&self, name: &str, arg: &Option<GenArg>) -> Result<String> {
+    fn display(&self, name: &str, arg: &GenArg) -> Result<String> {
         let cur_disk = self.disks[self.cur_disk].as_str();
         let cur_path = Path::new(cur_disk);
         let disk = self.sys.get_disks()
@@ -69,13 +69,14 @@ impl TimerGenerator for DiskGen {
         let used = total - avail;
         let perc = ((used as f64 / total as f64) * 100.0).round();
 
-        let o = DzenBuilder::from(cur_disk)
+        let o = arg.get_builder()
+            .add(cur_disk)
             .add(" ")
             .add(&perc.to_string())
             .add("%")
             .add(" ")
             .add(&byte_to_string(total))
-            .name_click("1", name)
+            .name_click(1, name)
             .to_string();
 
         Ok(o)
@@ -94,7 +95,7 @@ impl TimerGenerator for DiskGen {
         Ok(false)
     }
 
-    fn get_delay(&self, arg: &Option<GenArg>) -> u64 {
-        arg.as_ref().and_then(|ga| ga.timeout).unwrap_or(60)
+    fn get_delay(&self, arg: &GenArg) -> u64 {
+        arg.timeout.unwrap_or(60)
     }
 }

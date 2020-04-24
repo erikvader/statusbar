@@ -1,5 +1,6 @@
 pub mod utils;
 pub mod parser;
+pub mod external;
 
 use std::collections::VecDeque;
 use std::ops::{Add,Rem};
@@ -66,7 +67,8 @@ impl<'a> DzenBuilder<'a> {
     pub fn colorize<S>(self, color: S) -> Self
     where S: Into<Cow<'a, str>>
     {
-        let col = crate::config::theme(color.into()).map_or_else(|| color.into(), |s| Cow::from(s));
+        let c = color.into();
+        let col = crate::config::theme(c.as_ref()).map_or_else(|| c, |s| Cow::from(s));
         self.add("^fg()")
             .pre(")")
             .pre(col)
@@ -76,22 +78,22 @@ impl<'a> DzenBuilder<'a> {
     pub fn background<S>(self, color: S) -> Self
     where S: Into<Cow<'a, str>>
     {
-        let col = crate::config::theme(color.into()).map_or_else(|| color.into(), |s| Cow::from(s));
+        let c = color.into();
+        let col = crate::config::theme(c.as_ref()).map_or_else(|| c, |s| Cow::from(s));
         self.add("^bg()")
             .pre(")")
             .pre(col)
             .pre("^bg(")
     }
 
-    pub fn click<S,T>(self, button: T, command: S) -> Self
-    where S: Into<Cow<'a, str>>,
-          T: Into<Cow<'a, str>>
+    pub fn click<S>(self, button: usize, command: S) -> Self
+    where S: Into<Cow<'a, str>>
     {
         self.add("^ca()")
             .pre(")")
             .pre(command)
             .pre(", ")
-            .pre(button)
+            .pre(button.to_string())
             .pre("^ca(")
     }
 

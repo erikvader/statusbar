@@ -4,7 +4,7 @@ use tokio::sync::broadcast;
 use async_trait::async_trait;
 use super::*;
 use crate::tasks::ExitReason;
-use crate::tasks::external::fix_dzen_string;
+use crate::dzen_format::external::fix_dzen_string;
 
 pub struct EchoGen;
 
@@ -14,11 +14,13 @@ impl Generator for EchoGen {
                    to_printer: broadcast::Sender<Msg>,
                    mut from_pipo: mpsc::Receiver<String>,
                    id: GenId,
-                   _arg: Option<GenArg>,
+                   arg: GenArg,
                    _name: String) -> ExitReason
     {
         while let Some(inp) = from_pipo.recv().await {
-            if let Err(_) = to_printer.send((id, fix_dzen_string(inp))) {
+            let fixed = fix_dzen_string(inp);
+            let s = arg.get_builder().add(fixed).to_string();
+            if let Err(_) = to_printer.send((id, s)) {
                 return ExitReason::Error;
             }
         }

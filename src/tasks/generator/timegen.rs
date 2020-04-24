@@ -18,11 +18,14 @@ impl TimerGenerator for TimeGen {
         Ok(())
     }
 
-    fn display(&self, _name: &str, arg: &Option<GenArg>) -> Result<String> {
-        Ok(self.datetime.format("%a %Y-%m-%d %H:%M").to_string())
+    fn display(&self, _name: &str, arg: &GenArg) -> Result<String> {
+        let s = arg.get_builder()
+            .add(self.datetime.format("%a %Y-%m-%d %H:%M").to_string())
+            .to_string();
+        Ok(s)
     }
 
-    fn get_delay(&self, _arg: &Option<GenArg>) -> u64 {
+    fn get_delay(&self, _arg: &GenArg) -> u64 {
         // NOTE: the +1 is for safety
         (60 - self.datetime.second() as u64) + 1
     }

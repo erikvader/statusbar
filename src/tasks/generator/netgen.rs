@@ -27,14 +27,14 @@ impl NetGen {
 
 #[async_trait]
 impl TimerGenerator for NetGen {
-    async fn init(&mut self, arg: &Option<GenArg>) -> Result<()> {
+    async fn init(&mut self, arg: &GenArg) -> Result<()> {
         self.sys.refresh_networks_list();
         let avail_net = self.sys.get_networks()
             .into_iter()
             .map(|(x, _)| x.as_str())
             .collect::<HashSet<&str>>();
 
-        if let Some(GenArg{arg: Some(a), ..}) = arg {
+        if let Some(a) = &arg.arg {
             for iface in a.split(" ") {
                 if !avail_net.contains(iface) {
                     eprintln!("{} is not a connected interface", iface);
@@ -59,7 +59,7 @@ impl TimerGenerator for NetGen {
         Ok(())
     }
 
-    fn display(&self, name: &str, arg: &Option<GenArg>) -> Result<String> {
+    fn display(&self, name: &str, arg: &GenArg) -> Result<String> {
         let cur_if = self.interfaces[self.cur_if].as_str();
         let net = self.sys.get_networks()
             .into_iter()
@@ -79,8 +79,8 @@ impl TimerGenerator for NetGen {
             .add(" / ")
             .add(&byte_to_string(down))
             .maybe_add(!self.total, "/s")
-            .name_click("1", name)
-            .name_click("3", name)
+            .name_click(1, name)
+            .name_click(3, name)
             .to_string();
 
         Ok(o)
