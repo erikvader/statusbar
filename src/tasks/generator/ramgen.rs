@@ -1,6 +1,6 @@
 use sysinfo::SystemExt;
 use async_trait::async_trait;
-use super::{Result,TimerGenerator};
+use super::{Result,TimerGenerator,GenArg};
 
 pub struct RamGen{sys: sysinfo::System}
 
@@ -17,7 +17,7 @@ impl TimerGenerator for RamGen {
         Ok(())
     }
 
-    fn display(&self, _name: &str) -> Result<String> {
+    fn display(&self, _name: &str, arg: &Option<GenArg>) -> Result<String> {
         let usage = ((self.sys.get_used_memory() as f64 / self.sys.get_total_memory() as f64) * 100.0).round();
         let swap = self.sys.get_used_swap();
         let swap_str = if swap > 0 {

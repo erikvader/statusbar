@@ -95,7 +95,7 @@ impl Generator for OneGen {
                 match l {
                     Ok(Some(x)) => {
                         let fixed = fix_dzen_string(x);
-                        let clicked = DzenBuilder::from(&fixed).name_click("1", &name).to_string();
+                        let clicked = DzenBuilder::from(fixed).name_click("1", &name).to_string();
                         if let Err(_) = to_printer.send((id, clicked)) {
                             break ExitReason::Error;
                         }

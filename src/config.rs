@@ -10,11 +10,13 @@ pub const DZEN_FONT:   &str = "xft:Ubuntu Mono:pixelsize=14:antialias=true:hinti
 pub const ICON_PATH:   &str = "~/Documents/statusbar/icons";
 pub const SCRIPT_PATH: &str = "~/Documents/statusbar/scripts";
 
-pub fn theme(c: &str) -> &str {
-    match c {
-        "fg" => "#dfdfdf",
-        "bg" => "#333333",
-        _    => c,
+pub fn theme<S>(c: S) -> Option<&'static str>
+where S: AsRef<str>
+{
+    match c.as_ref() {
+        "fg" => Some("#dfdfdf"),
+        "bg" => Some("#333333"),
+        _    => None,
     }
 }
 

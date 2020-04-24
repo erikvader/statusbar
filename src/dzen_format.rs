@@ -4,12 +4,12 @@ pub mod parser;
 use std::collections::VecDeque;
 use std::ops::{Add,Rem};
 use std::fmt;
+use std::borrow::Cow;
 
-// TODO: Cow should add the ability to add String without needing to
-// borrow it from somewhere else.
+#[derive(Clone)]
 pub struct DzenBuilder<'a> {
-    work: VecDeque<&'a str>,
-    res: Vec<&'a str>
+    work: VecDeque<Cow<'a, str>>,
+    res: Vec<Cow<'a, str>>
 }
 
 impl<'a> DzenBuilder<'a> {
@@ -21,7 +21,9 @@ impl<'a> DzenBuilder<'a> {
         }
     }
 
-    pub fn from_str(s: &'a str) -> Self {
+    pub fn from_str<S>(s: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
         Self::new().add(s)
     }
 
@@ -31,7 +33,7 @@ impl<'a> DzenBuilder<'a> {
 
     // sections ///////////////////////////////////////////////////////////////
     pub fn new_section(mut self) -> Self {
-        for w in self.work.iter() {
+        for w in self.work.drain(..) {
             self.res.push(w);
         }
         self.work.clear();
@@ -39,7 +41,7 @@ impl<'a> DzenBuilder<'a> {
     }
 
     pub fn everything(mut self) -> Self {
-        for r in self.res.iter().rev() {
+        for r in self.res.drain(..).rev() {
             self.work.push_front(r);
         }
         self.res.clear();
@@ -47,66 +49,118 @@ impl<'a> DzenBuilder<'a> {
     }
 
     // adapters ///////////////////////////////////////////////////////////////
-    pub fn append_icon(self, icon: &'a str) -> Self {
-        let asd = DzenBuilder::icon_strs(icon);
-        self.surround(&[], &asd)
+    pub fn append_icon<S>(self, icon: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
+        let asd = DzenBuilder::icon_strs(icon.into());
+        asd.into_iter().fold(self, |s, a| s.add(a))
     }
 
-    pub fn prepend_icon(self, icon: &'a str) -> Self {
-        let asd = DzenBuilder::icon_strs(icon);
-        self.surround(&asd, &[])
+    pub fn prepend_icon<S>(self, icon: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
+        let asd = DzenBuilder::icon_strs(icon.into());
+        asd.into_iter().rev().fold(self, |s, a| s.pre(a))
     }
 
-    pub fn colorize(self, color: &'a str) -> Self {
-        self.surround(&["^fg(", crate::config::theme(color), ")"], &["^fg()"])
+    pub fn colorize<S>(self, color: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
+        let col = crate::config::theme(color.into()).map_or_else(|| color.into(), |s| Cow::from(s));
+        self.add("^fg()")
+            .pre(")")
+            .pre(col)
+            .pre("^fg(")
     }
 
-    pub fn background(self, color: &'a str) -> Self {
-        self.surround(&["^bg(", crate::config::theme(color), ")"], &["^bg()"])
+    pub fn background<S>(self, color: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
+        let col = crate::config::theme(color.into()).map_or_else(|| color.into(), |s| Cow::from(s));
+        self.add("^bg()")
+            .pre(")")
+            .pre(col)
+            .pre("^bg(")
     }
 
-    pub fn click(self, button: &'a str, command: &[&'a str]) -> Self {
-        self.surround(&[")"], &["^ca()"])
-            .surround(command, &[])
-            .surround(&["^ca(", button, ", "], &[])
+    pub fn click<S,T>(self, button: T, command: S) -> Self
+    where S: Into<Cow<'a, str>>,
+          T: Into<Cow<'a, str>>
+    {
+        self.add("^ca()")
+            .pre(")")
+            .pre(command)
+            .pre(", ")
+            .pre(button)
+            .pre("^ca(")
     }
 
-    pub fn position(self, x: &'a str, y: &'a str) -> Self {
-        self.surround(&["^pa(", x, ";", y, ")"], &[])
+    pub fn position(self, x: isize, y: isize) -> Self {
+        self.pre(")")
+            .pre(y.to_string())
+            .pre(";")
+            .pre(x.to_string())
+            .pre("^pa(")
     }
 
-    pub fn position_x(self, x: &'a str) -> Self {
-        self.position(x, "")
+    pub fn position_x(self, x: isize) -> Self {
+        self.pre(")")
+            .pre(x.to_string())
+            .pre("^pa(")
     }
 
-    pub fn shift(self, x: &'a str, y: &'a str) -> Self {
-        self.surround(&["^p(", x, ";", y, ")"], &[])
+    pub fn shift(self, x: isize, y: isize) -> Self {
+        self.pre(")")
+            .pre(y.to_string())
+            .pre(";")
+            .pre(x.to_string())
+            .pre("^p(")
     }
 
-    pub fn lpad(self, x: &'a str) -> Self {
-        self.shift(x, "")
+    pub fn lpad(self, x: usize) -> Self {
+        self.pre(")")
+            .pre(x.to_string())
+            .pre("^p(")
     }
 
-    pub fn rpad(self, x: &'a str) -> Self {
-        self.surround(&[], &["^p(", x, ")"])
+    pub fn rpad(self, x: usize) -> Self
+    {
+        self.add("^p(")
+            .add(x.to_string())
+            .add(")")
     }
 
     // NOTE: Only works if self doesn't contain any tags. bug(?) in dzen
-    pub fn block_align(self, width: &'a str, align: &'a str) -> Self {
-        self.surround(&["^ba(", width, ",", align, ")"], &[])
-    }
+    // pub fn block_align<S>(self, width: S, align: S) -> Self
+    // where S: Into<Cow<'a, str>>
+    // {
+    //     self.surround(&["^ba(", width, ",", align, ")"], &[])
+    // }
 
-    pub fn add(mut self, s: &'a str) -> Self {
-        self.work.push_back(s);
+    pub fn add<S>(mut self, s: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
+        self.work.push_back(s.into());
         self
     }
 
-    pub fn add_not_empty(self, s: &'a str) -> Self {
+    pub fn pre<S>(mut self, s: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
+        self.work.push_front(s.into());
+        self
+    }
+
+    pub fn add_not_empty<S>(self, s: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
         let e = !self.work.is_empty();
         self.maybe_add(e, s)
     }
 
-    pub fn maybe_add(self, b: bool, s: &'a str) -> Self {
+    pub fn maybe_add<S>(self, b: bool, s: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
         if b {
             self.add(s)
         } else {
@@ -114,30 +168,20 @@ impl<'a> DzenBuilder<'a> {
         }
     }
 
-    // helpers ////////////////////////////////////////////////////////////////
-    fn surround(mut self, before: &[&'a str], after: &[&'a str]) -> Self {
-        for s in before.iter().rev() {
-            self.work.push_front(s);
-        }
-        for s in after {
-            self.work.push_back(s);
-        }
-        self
-    }
-
-    fn icon_strs(icon: &'a str) -> Vec<&'a str> {
-        let mut tmp = vec!["^i("];
+    fn icon_strs(icon: Cow<'a, str>) -> Vec<Cow<'a, str>>
+    {
+        let mut tmp: Vec<Cow<'a, str>> = vec!["^i(".into()];
         let path = crate::config::ICON_PATH;
         if path.starts_with("~") {
             let h = unsafe{crate::HOME.as_str()};
-            tmp.push(h);
-            tmp.push(&path[1..]);
+            tmp.push(h.into());
+            tmp.push(path[1..].into());
         } else {
-            tmp.push(path);
+            tmp.push(path.into());
         }
-        tmp.push("/");
+        tmp.push("/".into());
         tmp.push(icon);
-        tmp.push(")");
+        tmp.push(")".into());
         tmp
     }
 }
@@ -154,17 +198,16 @@ impl fmt::Display for DzenBuilder<'_> {
     }
 }
 
-// impl<'a> Add for DzenBuilder<'a> {
-//     type Output = Self;
-//     fn add(mut self, mut other: Self) -> Self::Output {
-//         self.work.append(&mut other.work);
-//         self
-//     }
-// }
-
 impl<'a> Add<&'a str> for DzenBuilder<'a> {
     type Output = Self;
     fn add(self, other: &'a str) -> Self::Output {
+        self.add(other)
+    }
+}
+
+impl Add<String> for DzenBuilder<'_> {
+    type Output = Self;
+    fn add(self, other: String) -> Self::Output {
         self.add(other)
     }
 }
@@ -176,14 +219,21 @@ impl<'a> Rem<&'a str> for DzenBuilder<'a> {
     }
 }
 
+impl Rem<String> for DzenBuilder<'_> {
+    type Output = Self;
+    fn rem(self, other: String) -> Self::Output {
+        self.add_not_empty(other)
+    }
+}
+
 impl<'a> From<&'a str> for DzenBuilder<'a> {
     fn from(s: &'a str) -> Self {
         Self::from_str(s)
     }
 }
 
-impl<'a> From<&'a String> for DzenBuilder<'a> {
-    fn from(s: &'a String) -> Self {
-        Self::from_str(s.as_str())
+impl From<String> for DzenBuilder<'_> {
+    fn from(s: String) -> Self {
+        Self::from_str(s)
     }
 }

@@ -56,7 +56,7 @@ impl TimerGenerator for DiskGen {
         Ok(())
     }
 
-    fn display(&self, name: &str) -> Result<String> {
+    fn display(&self, name: &str, arg: &Option<GenArg>) -> Result<String> {
         let cur_disk = self.disks[self.cur_disk].as_str();
         let cur_path = Path::new(cur_disk);
         let disk = self.sys.get_disks()

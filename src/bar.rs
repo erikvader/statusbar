@@ -3,6 +3,7 @@ use itertools::Itertools;
 
 use crate::tasks::generator::*;
 use crate::x;
+use crate::dzen_format::DzenBuilder;
 
 pub struct BarConfig {
     left: Vec<GenId>,
@@ -165,6 +166,7 @@ pub struct GenBuilder {
     typ: GenType,
     name: Option<String>,
     arg: Option<String>,
+    prepend: Option<DzenBuilder<'static>>,
     timeout: Option<u64>
 }
 
@@ -241,10 +243,10 @@ impl SetupBuilder {
     where F: FnMut(GenId)
     {
         for l in gens.into_iter() {
-            let args = if l.timeout.is_none() && l.arg.is_none() {
+            let args = if l.timeout.is_none() && l.arg.is_none() && l.prepend.is_none() {
                 None
             } else {
-                Some(GenArg{timeout: l.timeout, arg: l.arg})
+                Some(GenArg{timeout: l.timeout, arg: l.arg, prepend: l.prepend})
             };
             let id = setup.create_module(l.typ, args);
             if let Some(n) = l.name {
@@ -300,6 +302,7 @@ impl GenBuilder {
             typ: typ,
             name: None,
             arg: None,
+            prepend: None,
             timeout: None
         }
     }
@@ -311,6 +314,11 @@ impl GenBuilder {
 
     pub fn argument<S: Into<String>>(mut self, arg: S) -> Self {
         self.arg = Some(arg.into());
+        self
+    }
+
+    pub fn prepend(mut self, pre: DzenBuilder<'static>) -> Self {
+        self.prepend = Some(pre);
         self
     }
 

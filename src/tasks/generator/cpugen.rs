@@ -27,7 +27,7 @@ impl TimerGenerator for CpuGen {
         Ok(())
     }
 
-    fn display(&self, name: &str) -> Result<String> {
+    fn display(&self, name: &str, arg: &Option<GenArg>) -> Result<String> {
         if self.detailed {
             let ps = self.sys.get_processors()
                 .iter()

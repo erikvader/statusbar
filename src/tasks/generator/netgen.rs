@@ -59,7 +59,7 @@ impl TimerGenerator for NetGen {
         Ok(())
     }
 
-    fn display(&self, name: &str) -> Result<String> {
+    fn display(&self, name: &str, arg: &Option<GenArg>) -> Result<String> {
         let cur_if = self.interfaces[self.cur_if].as_str();
         let net = self.sys.get_networks()
             .into_iter()
@@ -73,7 +73,8 @@ impl TimerGenerator for NetGen {
             (net.get_total_transmitted(), net.get_total_received())
         };
 
-        let o = DzenBuilder::from(&byte_to_string(up))
+        let o = arg.get_builder()
+            .add(byte_to_string(up))
             .maybe_add(!self.total, "/s")
             .add(" / ")
             .add(&byte_to_string(down))

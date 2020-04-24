@@ -32,8 +32,9 @@ use async_trait::async_trait;
 pub use super::{ExitReason,Msg};
 use dbus::nonblock as DN;
 use std::sync::Arc;
-use futures::stream::{select_all,FuturesUnordered};
-use either::{Left,Right,Either};
+use futures::stream::{select_all};
+use either::{Left,Right};
+use crate::dzen_format::DzenBuilder;
 
 pub type Result<X> = std::result::Result<X, ExitReason>;
 
@@ -59,7 +60,8 @@ pub struct GenId {
 
 pub struct GenArg {
     pub timeout: Option<u64>,
-    pub arg: Option<String>
+    pub arg: Option<String>,
+    pub prepend: Option<DzenBuilder<'static>>,
 }
 
 impl GenId {
@@ -71,6 +73,12 @@ impl GenId {
     }
     pub fn to_string(&self) -> String {
         self.id.to_string()
+    }
+}
+
+impl GenArg {
+    pub fn get_builder(&self) -> DzenBuilder<'_> {
+        self.prepend.as_ref().map_or_else(|| DzenBuilder::new(), |b| b.clone())
     }
 }
 
@@ -90,7 +98,7 @@ pub trait Generator {
 pub trait TimerGenerator {
     async fn init(&mut self, _arg: &Option<GenArg>) -> Result<()> {Ok(())}
     async fn update(&mut self) -> Result<()>;
-    fn display(&self, name: &str) -> Result<String>;
+    fn display(&self, name: &str, arg: &Option<GenArg>) -> Result<String>;
     async fn finalize(&mut self) -> Result<()> {Ok(())}
     async fn on_msg(&mut self, _msg: String) -> Result<bool> {Ok(false)}
     fn get_delay(&self, arg: &Option<GenArg>) -> u64 {
@@ -117,7 +125,7 @@ impl<G: TimerGenerator + Sync + Send> Generator for TimerWrap<G> {
                 let delay = Duration::from_secs(self.0.get_delay(&arg));
                 delayer.reset(tokio::time::Instant::now() + delay);
             }
-            let s = unwrap_er!(self.0.display(&name));
+            let s = unwrap_er!(self.0.display(&name, &arg));
             if let Err(_) = to_printer.send((id, s)) {
                 break ExitReason::Error;
             }

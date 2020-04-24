@@ -47,7 +47,7 @@ impl TimerGenerator for TempGen {
         Ok(())
     }
 
-    fn display(&self, _name: &str) -> Result<String> {
+    fn display(&self, _name: &str, arg: &Option<GenArg>) -> Result<String> {
         let comp = self.sys.get_components()
             .into_iter()
             .find(|c| c.get_label() == self.name)

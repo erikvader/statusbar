@@ -61,7 +61,7 @@ fn spawn_tray() -> tokio::io::Result<tokio::process::Child> {
 pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig) -> ExitReason {
     // aliases
     let sep = config.get_separator();
-    let pad = config.get_padding().to_string();
+    let pad = config.get_padding();
 
     // output buffer
     let mut output = HashMap::<GenId, String>::new();
@@ -128,11 +128,11 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
 
         // print to dzen
         let left_side = build_side(config.iter_left(), &output, sep)
-            .lpad(&pad)
+            .lpad(pad)
             .to_stringln();
 
         let right_side = build_side(config.iter_right(), &output, sep)
-            .rpad(&pad)
+            .rpad(pad)
             .to_stringln();
 
         let res = tokio::try_join!(

@@ -18,7 +18,7 @@ impl TimerGenerator for TimeGen {
         Ok(())
     }
 
-    fn display(&self, _name: &str) -> Result<String> {
+    fn display(&self, _name: &str, arg: &Option<GenArg>) -> Result<String> {
         Ok(self.datetime.format("%a %Y-%m-%d %H:%M").to_string())
     }
 
