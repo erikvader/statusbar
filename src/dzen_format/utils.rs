@@ -9,7 +9,7 @@ impl<'a> DzenBuilder<'a> {
                                    FIFO_PATH))
     }
 
-    pub fn add_color_step(self, num: i32, steps: &[(i32, &'a str)]) -> Self {
+    pub fn color_step(self, num: i32, steps: &[(i32, &'a str)]) -> Self {
         let mut color = None;
         for (lim, col) in steps.iter() {
             if num >= *lim {
@@ -19,11 +19,10 @@ impl<'a> DzenBuilder<'a> {
             }
         }
 
-        let tmp = self.new_section().add(num.to_string());
         if let Some(col) = color {
-            tmp.colorize(*col)
+            self.colorize(*col)
         } else {
-            tmp
+            self
         }
     }
 

@@ -10,9 +10,9 @@ use core::time::Duration;
 use tasks::*;
 use tasks::main_task;
 
-// TODO: resten utav generatorer
-// - battery
 // TODO: fixa presentationen utav alla generators
+// TODO: rensa alla varningar
+// TODO: ska icon kunna vara optional enligt icon_theme???
 
 pub static mut HOME: String = String::new();
 

@@ -1,60 +1,70 @@
-use std::collections::HashSet;
 use async_trait::async_trait;
-use super::{TimerGenerator,GenArg,Result,ExitReason};
-use crate::dzen_format::DzenBuilder;
-use std::path::PathBuf;
+use super::{TimerGenerator,GenArg,Result};
+use std::path::Path;
 use tokio::fs;
-use tokio::stream::StreamExt;
 
-const HWMON: &str = "/sys/class/hwmon";
+// TODO: använd udev för att lyssna på om den börjar ladda elr inte.
 
-// /sys/class/power_supply/BAT0/{capacity,status}
+const CAP_FILE:    &str = "/sys/class/power_supply/BAT0/capacity";
+const STATUS_FILE: &str = "/sys/class/power_supply/BAT0/status";
 
-pub struct TempGen {
-    name: String,
-    file: PathBuf
+pub struct BatGen {
+    has_battery: bool,
+    capacity: u8,
+    charging: bool,
 }
 
-impl TempGen {
+impl BatGen {
     pub fn new() -> Self {
-        TempGen{
-            name: "".to_string(),
-            file: PathBuf::new(),
+        BatGen{
+            has_battery: false,
+            capacity: 0,
+            charging: false,
         }
     }
 }
 
 #[async_trait]
-impl TimerGenerator for TempGen {
-    async fn init(&mut self, arg: &GenArg) -> Result<()> {
-        let argname = if let Some(GenArg{arg: Some(a), ..}) = arg {
-            a
+impl TimerGenerator for BatGen {
+    async fn init(&mut self, _arg: &GenArg) -> Result<()> {
+        if !Path::new(CAP_FILE).exists() {
+            eprintln!("couldn't find a battery");
+            self.has_battery = false;
         } else {
-            eprintln!("I need a name");
-            return Err(ExitReason::Error);
-        };
-
-        let mut hwmons = fs::read_dir(HWMON).await?;
-        while let Some(hw) = hwmons.next_entry().await? {
-            let mut p = hw.path();
-            p.push("name");
-            let name = String::from_utf8(fs::read(p).await?)?;
-            if name == *argname {
-                
-            }
+            self.has_battery = true;
         }
         Ok(())
     }
 
     async fn update(&mut self) -> Result<()> {
+        let cap = fs::read_to_string(CAP_FILE).await?;
+        self.capacity = match cap.trim_end().parse() {
+            Ok(c) => c,
+            Err(_) => {
+                eprintln!("couldn't parse capacity");
+                std::u8::MAX
+            }
+        };
+
+        self.charging = match fs::read_to_string(STATUS_FILE).await?.as_str().trim_end() {
+            "Charging" => true,
+            _ => false
+        };
+
         Ok(())
     }
 
-    fn display(&self, name: &str, arg: &GenArg) -> Result<String> {
-        Ok("".to_string())
-    }
+    fn display(&self, _name: &str, arg: &GenArg) -> Result<String> {
+        let mut s = arg.get_builder()
+            .add(self.capacity.to_string())
+            .add("%");
 
-    async fn on_msg(&mut self, msg: String) -> Result<bool> {
-        Ok(false)
+        if self.charging {
+            s = s.colorize("green");
+        } else {
+            s = s.color_step(self.capacity as i32, &[(0, "red"), (11, "yellow"), (30, "fg")])
+        }
+
+        Ok(s.to_string())
     }
 }
