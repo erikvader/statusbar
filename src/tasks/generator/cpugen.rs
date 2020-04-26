@@ -38,7 +38,9 @@ impl TimerGenerator for CpuGen {
                     .add(format!("{:0>2}", usage))
                     .color_step(usage as i32, LEVELS);
             }
-            Ok(bu.name_click(1, name).to_string())
+            Ok(bu.everything()
+               .name_click(1, name)
+               .to_string())
         } else {
             let usage = self.sys.get_global_processor_info().get_cpu_usage().round();
 
