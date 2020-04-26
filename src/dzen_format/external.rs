@@ -9,7 +9,7 @@ where S: AsRef<str>
     p.map_tag(|tag, cont| match tag {
         "i" => {
             let themed = crate::config::icon_theme(cont).unwrap_or(cont);
-            let mut pathed = String::new() + crate::config::ICON_PATH + "/" + themed;
+            let mut pathed = String::new() + crate::config::ICON_PATH + "/" + themed + ".xpm";
             if pathed.starts_with("~") {
                 pathed.replace_range(..1, unsafe{&crate::HOME});
             }

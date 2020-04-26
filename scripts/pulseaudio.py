@@ -46,7 +46,7 @@ def main():
 
     def print_dzen():
         if muted:
-            print("muted", flush=True)
+            print("^fg(gray)muted^fg()", flush=True)
         else:
             print("{}%".format(volume), flush=True)
 

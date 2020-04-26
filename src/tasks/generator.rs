@@ -17,7 +17,6 @@ pub mod netgen;
 pub mod diskgen;
 pub mod tempgen;
 pub mod ipgen;
-pub mod folgen;
 pub mod onegen;
 pub mod batgen;
 
@@ -49,7 +48,6 @@ pub enum GenType {
     DISK,
     TEMP,
     IP,
-    FOL,
     ONE,
     BAT,
 }
@@ -259,7 +257,6 @@ pub fn genid_to_generator(id: GenId) -> Box<dyn Generator + Send> {
         GenType::DISK => Box::new(TimerWrap(diskgen::DiskGen::new())),
         GenType::TEMP => Box::new(TimerWrap(tempgen::TempGen::new())),
         GenType::IP   => Box::new(DBusWrap(ipgen::IpGen::new())),
-        GenType::FOL  => Box::new(folgen::FolGen::new()),
         GenType::ONE  => Box::new(onegen::OneGen::new()),
         GenType::BAT  => Box::new(TimerWrap(batgen::BatGen::new())),
     }

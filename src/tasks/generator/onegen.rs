@@ -74,7 +74,7 @@ impl Generator for OneGen {
                 x = from_pipo.recv() => {
                     match x {
                         None => break ExitReason::Normal,
-                        Some(s) if !run_cmd && s == "click 1" => {
+                        Some(_) if !run_cmd => {
                             proc = match spawn(&cmd, false) {
                                 Ok(c) => c,
                                 Err(e) => {

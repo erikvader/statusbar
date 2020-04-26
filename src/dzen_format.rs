@@ -170,6 +170,14 @@ impl<'a> DzenBuilder<'a> {
         }
     }
 
+    pub fn rect(self, width: usize, height: usize) -> Self {
+        self.add("^r(")
+            .add(width.to_string())
+            .add("x")
+            .add(height.to_string())
+            .add(")")
+    }
+
     fn icon_strs(icon: Cow<'a, str>) -> Vec<Cow<'a, str>>
     {
         let mut tmp: Vec<Cow<'a, str>> = vec!["^i(".into()];
@@ -187,6 +195,7 @@ impl<'a> DzenBuilder<'a> {
         } else {
             tmp.push(icon);
         }
+        tmp.push(".xpm".into());
         tmp.push(")".into());
         tmp
     }

@@ -62,7 +62,7 @@ impl TimerGenerator for BatGen {
         if self.charging {
             s = s.colorize("green");
         } else {
-            s = s.color_step(self.capacity as i32, &[(0, "red"), (11, "yellow"), (30, "fg")])
+            s = s.color_step(self.capacity as i32, &[(0, "red"), (16, "yellow"), (30, "fg"), (100, "green")])
         }
 
         Ok(s.to_string())

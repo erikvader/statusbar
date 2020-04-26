@@ -127,11 +127,11 @@ async fn get_string<C>(
 where C: DN::NonblockReply
 {
     let mut bu = arg.get_builder();
-    bu = bu.add(match state {
-        70 => "C",
-        60 => "L",
-        _ => "NC"
-    }).add(" ");
+    // bu = bu.add(match state {
+    //     // 70 => "C",
+    //     60 => "L",
+    //     _ => "NC"
+    // }).add(" ");
 
     let to_show;
     match get_device(interface, conn.clone()).await {
@@ -174,7 +174,16 @@ where C: DN::NonblockReply
         }
     }
 
-    bu.add(&to_show).name_click(1, name).to_string()
+    if state < 60 {
+        bu = bu.add("not connected").colorize("gray");
+    } else {
+        bu = bu.add_trunc(10, to_show).name_click(1, name);
+        if state == 60 {
+            bu = bu.colorize("yellow");
+        }
+    }
+
+    bu.to_string()
 }
 
 #[async_trait]

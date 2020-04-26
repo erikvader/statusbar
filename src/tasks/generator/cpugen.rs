@@ -3,6 +3,8 @@ use async_trait::async_trait;
 use super::{TimerGenerator,GenArg,Result};
 use crate::dzen_format::DzenBuilder;
 
+const LEVELS: &[(i32, &str)] = &[(50, "yellow"), (75, "red")];
+
 pub struct CpuGen{sys: sysinfo::System, detailed: bool}
 
 impl CpuGen {
@@ -29,21 +31,21 @@ impl TimerGenerator for CpuGen {
 
     fn display(&self, name: &str, arg: &GenArg) -> Result<String> {
         if self.detailed {
-            let ps = self.sys.get_processors()
-                .iter()
-                .map(|p| format!("{:0>2}", p.get_cpu_usage().round()))
-                .collect::<Vec<String>>();
-            let str_ps = ps.iter().map(|s| s.as_str());
-            let mut b = DzenBuilder::new();
-            for p in str_ps {
-                b = b % "|" + p;
+            let mut bu = arg.get_builder();
+            for p in self.sys.get_processors() {
+                let usage = p.get_cpu_usage().round();
+                bu = bu.add_not_empty("/")
+                    .add(format!("{:0>2}", usage))
+                    .color_step(usage as i32, LEVELS);
             }
-            Ok(b.name_click(1, name).to_string())
+            Ok(bu.name_click(1, name).to_string())
         } else {
-            let usage = self.sys.get_global_processor_info().get_cpu_usage().round().to_string();
+            let usage = self.sys.get_global_processor_info().get_cpu_usage().round();
+
             Ok(arg.get_builder()
-               .add(usage)
+               .add(usage.to_string())
                .add("%")
+               .color_step(usage as i32, LEVELS)
                .name_click(1, name)
                .to_string())
         }
@@ -52,5 +54,9 @@ impl TimerGenerator for CpuGen {
     async fn on_msg(&mut self, _msg: String) -> Result<bool> {
         self.detailed = !self.detailed;
         Ok(false)
+    }
+
+    fn get_delay(&self, arg: &GenArg) -> u64 {
+        arg.timeout.unwrap_or(2)
     }
 }

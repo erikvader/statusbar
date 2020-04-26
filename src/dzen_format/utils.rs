@@ -48,7 +48,9 @@ pub fn bytes_to_ibibyte_string(b: u64) -> String {
     let mut num = b as f64 / 1024_f64.powf(mag);
     num *= 10_f64;
     num = num.trunc();
-    num /= 10_f64;
+
+    let n = (num / 10_f64).trunc() as i32;
+    let d = (num % 10_f64) as i32;
 
     let unit = match mag as u32 {
         0 => "B",
@@ -61,5 +63,14 @@ pub fn bytes_to_ibibyte_string(b: u64) -> String {
         7 => "ZiB",
         _ => "YiB"
     };
-    format!("{:.1} {}", num, unit)
+
+    let mut s = n.to_string();
+    if d > 0 {
+        s.push_str(".");
+        s.push_str(&d.to_string());
+    }
+    s.push_str(" ");
+    s.push_str(unit);
+
+    s
 }

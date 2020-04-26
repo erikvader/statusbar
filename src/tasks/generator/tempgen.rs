@@ -67,4 +67,8 @@ impl TimerGenerator for TempGen {
     async fn on_msg(&mut self, _msg: String) -> Result<bool> {
         Ok(false)
     }
+
+    fn get_delay(&self, arg: &GenArg) -> u64 {
+        arg.timeout.unwrap_or(2)
+    }
 }

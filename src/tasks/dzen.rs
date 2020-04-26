@@ -29,6 +29,7 @@ fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<tokio:
         .args(&["-ta", al])
         .args(&["-x", x])
         .args(&["-w", w])
+        .args(&["-dock"])
         .args(&["-e", ""])
         .spawn()
 }

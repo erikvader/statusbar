@@ -14,9 +14,17 @@ pub fn theme<S>(c: S) -> Option<&'static str>
 where S: AsRef<str>
 {
     match c.as_ref() {
-        "fg" => Some("#dfdfdf"),
-        "bg" => Some("#333333"),
-        _    => None,
+        "fg"         => Some("#dfdfdf"),
+        "bg"         => Some("#333333"),
+        "lightbg"    => Some("#505050"),
+        "urgent"     => Some("#bd2c40"),
+        "hotpink"    => Some("#ff69b4"),
+        "orange"     => Some("#ffb52a"),
+        "yellow2"    => Some("#eeee00"),
+        "blue2"      => Some("#00ace6"),
+        "darkorange" => Some("#ff8c00"),
+        "magenta"    => Some("#ff00ff"),
+        _            => None,
     }
 }
 
@@ -24,35 +32,62 @@ pub fn icon_theme<S>(c: S) -> Option<&'static str>
 where S: AsRef<str>
 {
     match c.as_ref() {
-        _ => None,
+        "battery"     => Some("kanna"),
+        "volume"      => Some("sonico"),
+        "temperature" => Some("salamander"),
+        "cpu"         => Some("balzac"),
+        "ram"         => Some("ram"),
+        "time"        => Some("lucy"),
+        "wifi"        => Some("vert"),
+        "netspeed"    => Some("rem"),
+        _             => None,
     }
+}
+
+fn pre_icon(i: &'static str) -> DB<'static> {
+    DB::new().append_icon(i).rpad(3)
 }
 
 pub fn config() -> bar::Result {
     SB::new()
-        .add_bar(BB::new("DisplayPort-0")
-                 .add_left(GB::new(GT::CPU))
-                 .add_left(GB::new(GT::RAM))
+        .add_bar(BB::new("eDP1")
+                 .add_left(GB::new(GT::ECHO)
+                           .name("xmonad_eDP1"))
                  .add_right(GB::new(GT::ONE)
                             .argument("pacman.sh"))
-                 .add_right(GB::new(GT::FOL)
-                            .argument("pulseaudio.py"))
-                 .add_right(GB::new(GT::IP)
-                            .argument("enp4s0"))
-                 .add_right(GB::new(GT::TEMP)
-                            .argument("Package id 0"))
-                 .add_right(GB::new(GT::TEMP)
-                            .argument("edge"))
+                 .add_right(GB::new(GT::ONE)
+                            .argument("statusbar_progmode")
+                            .name("progmode"))
+                 .add_right(GB::new(GT::ONE)
+                            .argument("pulseaudio.py")
+                            .prepend(pre_icon("volume")))
+                 // .add_right(GB::new(GT::DISK)
+                 //            .argument("/,/media/data"))
                  .add_right(GB::new(GT::NET)
-                            .argument("enp4s0")
-                            .timeout(1))
-                 .add_right(GB::new(GT::DISK)
-                            .argument("/,/home,/media/3TB,/media/4TB"))
-                 .add_right(GB::new(GT::CPU))
-                 .add_right(GB::new(GT::TIME))
+                            .argument("wlp1s0")
+                            .prepend(pre_icon("netspeed")))
+                 .add_right(GB::new(GT::TEMP)
+                            .argument("Package id 0")
+                            .prepend(pre_icon("temperature")))
+                 .add_right(GB::new(GT::RAM)
+                            .prepend(pre_icon("ram")))
+                 .add_right(GB::new(GT::CPU)
+                            .prepend(pre_icon("cpu")))
+                 .add_right(GB::new(GT::IP)
+                            .argument("wlp1s0")
+                            .prepend(pre_icon("wifi")))
+                 .add_right(GB::new(GT::BAT)
+                            .prepend(pre_icon("battery")))
+                 .add_right(GB::new(GT::TIME)
+                            .prepend(pre_icon("time")))
                  .tray(true))
         .map_other(|output| BB::new(output)
                    .add_right(GB::new(GT::TIME)))
-        .separator(DB::from(" | ").colorize("red").to_string())
+        .separator(DB::new()
+                   .lpad(5)
+                   .rect(2, 20)
+                   .rpad(5)
+                   .colorize("white")
+                   .to_string())
         .build()
 }

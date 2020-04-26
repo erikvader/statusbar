@@ -77,7 +77,7 @@ impl TimerGenerator for NetGen {
             .add(byte_to_string(up))
             .maybe_add(!self.total, "/s")
             .add(" / ")
-            .add(&byte_to_string(down))
+            .add(byte_to_string(down))
             .maybe_add(!self.total, "/s")
             .name_click(1, name)
             .name_click(3, name)
@@ -100,5 +100,9 @@ impl TimerGenerator for NetGen {
             }
         }
         Ok(false)
+    }
+
+    fn get_delay(&self, arg: &GenArg) -> u64 {
+        arg.timeout.unwrap_or(2)
     }
 }
