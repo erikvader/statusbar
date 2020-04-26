@@ -6,7 +6,7 @@ else
     echo "^fg(yellow)fetching...^fg()"
     if count=$(checkupdates | wc -l); then
         if [ "$count" -eq 0 ]; then
-            echo "^fg(green)Updated^fg()"
+            echo "updated"
         else
             echo "^fg(yellow)$count updates^fg()"
         fi
