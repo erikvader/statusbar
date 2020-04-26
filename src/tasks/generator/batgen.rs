@@ -48,6 +48,7 @@ impl TimerGenerator for BatGen {
 
         self.charging = match fs::read_to_string(STATUS_FILE).await?.as_str().trim_end() {
             "Charging" => true,
+            "Full" => true,
             _ => false
         };
 
@@ -62,7 +63,7 @@ impl TimerGenerator for BatGen {
         if self.charging {
             s = s.colorize("green");
         } else {
-            s = s.color_step(self.capacity as i32, &[(0, "red"), (16, "yellow"), (30, "fg"), (100, "green")])
+            s = s.color_step(self.capacity as i32, &[(0, "red"), (16, "yellow"), (30, "fg")])
         }
 
         Ok(s.to_string())
