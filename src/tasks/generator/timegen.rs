@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use chrono::prelude::*;
 use super::{TimerGenerator,GenArg,Result};
-use crate::dzen_format::DzenBuilder;
 
 pub struct TimeGen{datetime: DateTime<Local>}
 

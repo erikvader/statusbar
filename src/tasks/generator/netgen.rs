@@ -2,7 +2,6 @@ use sysinfo::{SystemExt,NetworkExt};
 use std::collections::HashSet;
 use async_trait::async_trait;
 use super::{TimerGenerator,GenArg,Result,ExitReason};
-use crate::dzen_format::DzenBuilder;
 use crate::dzen_format::utils::bytes_to_ibibyte_string as byte_to_string;
 
 pub struct NetGen{

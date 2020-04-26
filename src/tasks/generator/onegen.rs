@@ -8,7 +8,6 @@ use async_trait::async_trait;
 use super::*;
 use crate::tasks::ExitReason;
 use crate::dzen_format::external::fix_dzen_string;
-use crate::dzen_format::DzenBuilder;
 
 pub struct OneGen;
 

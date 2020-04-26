@@ -39,6 +39,7 @@ use crate::dzen_format::DzenBuilder;
 pub type Result<X> = std::result::Result<X, ExitReason>;
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash,Debug)]
+#[allow(dead_code)]
 pub enum GenType {
     CPU = 0,
     RAM,

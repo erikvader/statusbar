@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use super::{GenArg,ExitReason,DBusGenerator};
 use super::Result as EResult;
-use crate::dzen_format::DzenBuilder;
 use dbus_tokio::connection;
 use dbus::nonblock as DN;
 use std::time::Duration;
@@ -126,13 +125,6 @@ async fn get_string<C>(
 ) -> String
 where C: DN::NonblockReply
 {
-    let mut bu = arg.get_builder();
-    // bu = bu.add(match state {
-    //     // 70 => "C",
-    //     60 => "L",
-    //     _ => "NC"
-    // }).add(" ");
-
     let to_show;
     match get_device(interface, conn.clone()).await {
         Err(e) => {
@@ -174,6 +166,7 @@ where C: DN::NonblockReply
         }
     }
 
+    let mut bu = arg.get_builder();
     if state < 60 {
         bu = bu.add("not connected").colorize("gray");
     } else {

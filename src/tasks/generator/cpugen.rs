@@ -1,7 +1,6 @@
 use sysinfo::{SystemExt,ProcessorExt};
 use async_trait::async_trait;
 use super::{TimerGenerator,GenArg,Result};
-use crate::dzen_format::DzenBuilder;
 
 const LEVELS: &[(i32, &str)] = &[(50, "yellow"), (75, "red")];
 
@@ -31,10 +30,11 @@ impl TimerGenerator for CpuGen {
 
     fn display(&self, name: &str, arg: &GenArg) -> Result<String> {
         if self.detailed {
-            let mut bu = arg.get_builder();
+            let mut bu = arg.get_builder().new_section();
             for p in self.sys.get_processors() {
                 let usage = p.get_cpu_usage().round();
                 bu = bu.add_not_empty("/")
+                    .new_section()
                     .add(format!("{:0>2}", usage))
                     .color_step(usage as i32, LEVELS);
             }

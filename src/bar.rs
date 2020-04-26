@@ -25,6 +25,7 @@ pub struct SetupConfig {
 }
 
 impl SetupConfig {
+    #![allow(dead_code)]
     pub fn new() -> Self {
         SetupConfig{
             arguments: HashMap::new(),
@@ -77,6 +78,7 @@ impl SetupConfig {
 }
 
 impl BarConfig {
+    #![allow(dead_code)]
     pub fn new(output: String, setup: &x::XSetup) -> Option<Self> {
         if let Some(xin) = setup.get_xinerama(&output) {
             if let Some(rect) = setup.get_rect(&output) {
@@ -171,6 +173,7 @@ pub struct GenBuilder {
 }
 
 impl SetupBuilder {
+    #![allow(dead_code)]
     pub fn new() -> Self {
         SetupBuilder{
             bars: Vec::new(),
@@ -259,6 +262,7 @@ impl SetupBuilder {
 }
 
 impl BarBuilder {
+    #![allow(dead_code)]
     pub fn new<S: Into<String>>(output: S) -> Self {
         BarBuilder{
             output: output.into(),
@@ -297,6 +301,7 @@ impl BarBuilder {
 }
 
 impl GenBuilder {
+    #![allow(dead_code)]
     pub fn new(typ: GenType) -> Self {
         GenBuilder{
             typ: typ,

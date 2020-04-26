@@ -14,6 +14,7 @@ pub struct DzenBuilder<'a> {
 }
 
 impl<'a> DzenBuilder<'a> {
+    #![allow(dead_code)]
     // creation ///////////////////////////////////////////////////////////////
     pub fn new() -> Self {
         DzenBuilder{

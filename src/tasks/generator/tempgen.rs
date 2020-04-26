@@ -1,10 +1,9 @@
-use sysinfo::{SystemExt,ComponentExt,Component};
+use sysinfo::{SystemExt,ComponentExt};
 use std::collections::HashSet;
 use async_trait::async_trait;
-use std::path::Path;
 use super::{TimerGenerator,GenArg,Result,ExitReason};
-use crate::dzen_format::DzenBuilder;
-use crate::dzen_format::utils::bytes_to_ibibyte_string as byte_to_string;
+
+const LEVELS: &[(i32, &str)] = &[(50, "yellow"), (70, "red")];
 
 pub struct TempGen {
     sys: sysinfo::System,
@@ -59,6 +58,7 @@ impl TimerGenerator for TempGen {
         let o = arg.get_builder()
             .add(temp.to_string())
             .add("°C")
+            .color_step(temp as i32, LEVELS)
             .to_string();
 
         Ok(o)
