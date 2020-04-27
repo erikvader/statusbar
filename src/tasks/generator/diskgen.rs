@@ -1,14 +1,14 @@
 use sysinfo::{SystemExt,DiskExt};
 use std::collections::HashSet;
 use async_trait::async_trait;
-use std::path::Path;
+use std::path::PathBuf;
 use super::{TimerGenerator,GenArg,Result,ExitReason};
-use crate::dzen_format::utils::bytes_to_ibibyte_string as byte_to_string;
+
+const LEVELS: &[(i32, &str)] = &[(90, "yellow"), (95, "red")];
 
 pub struct DiskGen{
     sys: sysinfo::System,
-    disks: Vec<String>,
-    cur_disk: usize,
+    disks: Vec<PathBuf>,
 }
 
 impl DiskGen {
@@ -16,7 +16,6 @@ impl DiskGen {
         DiskGen{
             sys: sysinfo::System::new(),
             disks: Vec::new(),
-            cur_disk: 0,
         }
     }
 }
@@ -37,7 +36,7 @@ impl TimerGenerator for DiskGen {
                 if !avail_disk.contains(disk) {
                     eprintln!("{} does not seem to be a mount point", disk);
                 } else {
-                    self.disks.push(disk.to_string());
+                    self.disks.push(PathBuf::from(disk));
                 }
             }
         }
@@ -55,43 +54,26 @@ impl TimerGenerator for DiskGen {
         Ok(())
     }
 
-    fn display(&self, name: &str, arg: &GenArg) -> Result<String> {
-        let cur_disk = self.disks[self.cur_disk].as_str();
-        let cur_path = Path::new(cur_disk);
-        let disk = self.sys.get_disks()
-            .into_iter()
-            .find(|d| d.get_mount_point() == cur_path)
-            .ok_or(ExitReason::Error)?;
-
-        let total = disk.get_total_space();
-        let avail = disk.get_available_space();
-        let used = total - avail;
-        let perc = ((used as f64 / total as f64) * 100.0).round();
-
-        let o = arg.get_builder()
-            .add(cur_disk)
-            .add(" ")
-            .add(&perc.to_string())
-            .add("%")
-            .add(" ")
-            .add(&byte_to_string(total))
-            .name_click(1, name)
-            .to_string();
-
-        Ok(o)
-    }
-
-    async fn on_msg(&mut self, msg: String) -> Result<bool> {
-        match msg.as_str() {
-            "click 1" => {
-                self.cur_disk += 1;
-                self.cur_disk %= self.disks.len();
-            },
-            _ => {
-                eprintln!("got unexpected message");
+    fn display(&self, _name: &str, arg: &GenArg) -> Result<String> {
+        let mut bu = arg.get_builder().new_section();
+        for disk in self.sys.get_disks() {
+            if !self.disks.iter().any(|p| p == disk.get_mount_point()) {
+                continue;
             }
+
+            let total = disk.get_total_space();
+            let avail = disk.get_available_space();
+            let used = total - avail;
+            let perc = ((used as f64 / total as f64) * 100.0).round() as i32;
+
+            bu = bu.add_not_empty("/")
+                .new_section()
+                .add(perc.to_string())
+                .add("%")
+                .color_step(perc, LEVELS);
         }
-        Ok(false)
+
+        Ok(bu.to_string())
     }
 
     fn get_delay(&self, arg: &GenArg) -> u64 {
