@@ -28,13 +28,13 @@ impl TimerGenerator for RamGen {
             .color_step(usage as i32, LEVELS);
 
         let swap = self.sys.get_used_swap();
-        if swap > 0 {
-            let total_swap = self.sys.get_total_swap() as f64;
-            let perc = ((swap as f64 / total_swap) * 100.0).round();
+        let total_swap = self.sys.get_total_swap() as f64;
+        let swap_perc = ((swap as f64 / total_swap) * 100.0).round() as i32;
+        if swap_perc > 0 {
             bu = bu.add(" (")
                 .new_section()
-                .add(perc.to_string())
-                .color_step(perc as i32, LEVELS)
+                .add(swap_perc.to_string())
+                .color_step(swap_perc, LEVELS)
                 .add(")");
         }
 
