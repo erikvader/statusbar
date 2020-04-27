@@ -32,15 +32,17 @@ pub fn icon_theme<S>(c: S) -> Option<&'static str>
 where S: AsRef<str>
 {
     match c.as_ref() {
-        "battery"     => Some("kanna"),
-        "volume"      => Some("sonico"),
-        "temperature" => Some("salamander"),
-        "cpu"         => Some("balzac"),
-        "ram"         => Some("ram"),
-        "time"        => Some("lucy"),
-        "wifi"        => Some("vert"),
-        "netspeed"    => Some("rem"),
-        _             => None,
+        "battery"      => Some("kanna"),
+        "volume"       => Some("sonico"),
+        "temperature"  => Some("salamander"),
+        "temperature2" => Some("yoko"),
+        "cpu"          => Some("balzac"),
+        "ram"          => Some("ram"),
+        "time"         => Some("lucy"),
+        "wifi"         => Some("vert"),
+        "netspeed"     => Some("rem"),
+        "disks"        => Some("hinata"),
+        _              => None,
     }
 }
 
