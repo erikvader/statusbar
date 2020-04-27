@@ -10,9 +10,14 @@ use core::time::Duration;
 use tasks::*;
 use tasks::main_task;
 
-// TODO: fixa presentationen utav alla generators
-// TODO: rensa alla varningar
-// TODO: ska icon kunna vara optional enligt icon_theme???
+// TODO: stoppa in name i GenArg?
+// TODO: få start att acceptera en lista utav GenArgs där alla måste
+// vara likadana förutom prepend som får (borde) vara annorlunda.
+// Borde få en lista utav GenId också? Name borde vara lika på alla.
+// Detta för att kunna skapa en generator som skickar sin output till
+// flera olika ställen med olika prepend. najs om man vill visa tiden
+// på olika skärmar, alla med olika ikoner, utan att behöva spawna en
+// annars identisk generator flera gånger.
 
 pub static mut HOME: String = String::new();
 

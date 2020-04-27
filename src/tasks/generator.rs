@@ -53,13 +53,13 @@ pub enum GenType {
     BAT,
 }
 
-#[derive(Clone,Copy,PartialEq,Eq,Hash)]
+#[derive(Clone,Copy,PartialEq,Eq,Hash,Debug)]
 pub struct GenId {
-    gen: GenType,
-    id: u8
+    pub gen: GenType,
+    pub id: u8
 }
 
-// TODO: stoppa in name här?
+#[derive(PartialEq)]
 pub struct GenArg {
     pub timeout: Option<u64>,
     pub arg: Option<String>,

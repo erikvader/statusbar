@@ -35,9 +35,11 @@ impl SetupConfig {
         }
     }
 
-    // TODO: check if there already is some `gen` with `arg` and
-    // return that id instead of creating a new one.
-    pub fn create_module(&mut self, gen: GenType, arg: Option<GenArg>, name: Option<String>) -> GenId {
+    fn create_module(&mut self, gen: GenType, arg: Option<GenArg>, name: Option<String>) -> GenId {
+        if let Some(id) = self.module_exists(gen, &arg, &name) {
+            return id;
+        }
+
         if arg.is_some() || name.is_some() {
             let id = GenId::new(gen, self.id);
             self.id += 1;
@@ -51,6 +53,17 @@ impl SetupConfig {
         } else {
             GenId::from_gen(gen)
         }
+    }
+
+    fn module_exists(&self, gen: GenType, arg: &Option<GenArg>, name: &Option<String>) -> Option<GenId> {
+        for b in self.bars.iter() {
+            for g in b.iter() {
+                if g.gen == gen && self.names.get(g) == name.as_ref() && self.arguments.get(g) == arg.as_ref() {
+                    return Some(*g);
+                }
+            }
+        }
+        None
     }
 
     pub fn name_module(&mut self, id: GenId, name: String) {

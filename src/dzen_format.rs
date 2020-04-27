@@ -7,7 +7,7 @@ use std::ops::{Add,Rem};
 use std::fmt;
 use std::borrow::Cow;
 
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub struct DzenBuilder<'a> {
     work: VecDeque<Cow<'a, str>>,
     res: Vec<Cow<'a, str>>
