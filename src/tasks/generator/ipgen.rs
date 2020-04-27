@@ -170,7 +170,7 @@ where C: DN::NonblockReply
     if state < 60 {
         bu = bu.add("not connected").colorize("gray");
     } else {
-        bu = bu.add_trunc(10, to_show).name_click(1, name);
+        bu = bu.add_trunc("255.255.255.255".len(), to_show).name_click(1, name);
         if state == 60 {
             bu = bu.colorize("yellow");
         }
