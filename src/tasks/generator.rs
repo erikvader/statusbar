@@ -59,6 +59,7 @@ pub struct GenId {
     id: u8
 }
 
+// TODO: stoppa in name här?
 pub struct GenArg {
     pub timeout: Option<u64>,
     pub arg: Option<String>,

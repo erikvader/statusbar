@@ -37,11 +37,16 @@ impl SetupConfig {
 
     // TODO: check if there already is some `gen` with `arg` and
     // return that id instead of creating a new one.
-    pub fn create_module(&mut self, gen: GenType, arg: Option<GenArg>) -> GenId {
-        if let Some(a) = arg {
+    pub fn create_module(&mut self, gen: GenType, arg: Option<GenArg>, name: Option<String>) -> GenId {
+        if arg.is_some() || name.is_some() {
             let id = GenId::new(gen, self.id);
             self.id += 1;
-            self.arguments.insert(id, a);
+            if let Some(a) = arg {
+                self.arguments.insert(id, a);
+            }
+            if let Some(s) = name {
+                self.name_module(id, s);
+            }
             id
         } else {
             GenId::from_gen(gen)
@@ -251,10 +256,7 @@ impl SetupBuilder {
             } else {
                 Some(GenArg{timeout: l.timeout, arg: l.arg, prepend: l.prepend})
             };
-            let id = setup.create_module(l.typ, args);
-            if let Some(n) = l.name {
-                setup.name_module(id, n);
-            }
+            let id = setup.create_module(l.typ, args, l.name);
             bar_add(id);
         }
 
