@@ -13,7 +13,7 @@ use crate::tasks::generator::GenId;
 use crate::dzen_format::DzenBuilder;
 use super::Msg;
 
-const ACC_DUR: Duration = Duration::from_millis(50);
+const ACC_DUR: Duration = Duration::from_millis(40);
 
 fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<tokio::process::Child> {
     let fg = crate::config::theme("fg").unwrap_or("#ffffff");

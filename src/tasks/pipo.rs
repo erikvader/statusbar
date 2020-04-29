@@ -60,8 +60,6 @@ pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdo
                     break 'outer ExitReason::Normal;
                 }
 
-                log::trace!("'{}', '{}'", gid, msg);
-
                 if let Some(send) = gens.get_mut(gid) {
                     match send.try_send(msg.to_string()) {
                         Err(mpsc::error::TrySendError::Closed(_)) => {

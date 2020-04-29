@@ -35,7 +35,7 @@ fn main() {
         .timestamp(SL::Timestamp::Second)
         .show_level(true)
         .color(SL::ColorChoice::Auto)
-        .verbosity(3) // 5 = trace, 1 = error
+        .verbosity(2) // 4 = trace, 0 = error
         .init()
         .expect("couldn't start logger");
 
