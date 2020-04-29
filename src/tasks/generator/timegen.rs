@@ -18,8 +18,20 @@ impl TimerGenerator for TimeGen {
     }
 
     fn display(&self, _name: &str, arg: &GenArg) -> Result<String> {
+        let d = match self.datetime.weekday() {
+            Weekday::Mon => "Mån",
+            Weekday::Tue => "Tis",
+            Weekday::Wed => "Ons",
+            Weekday::Thu => "Tor",
+            Weekday::Fri => "Fre",
+            Weekday::Sat => "Lör",
+            Weekday::Sun => "Sön",
+        };
+
         let s = arg.get_builder()
-            .add(self.datetime.format("%a %Y-%m-%d %H:%M").to_string())
+            .add(d)
+            .add(" ")
+            .add(self.datetime.format("%Y-%m-%d %H:%M").to_string())
             .to_string();
         Ok(s)
     }
