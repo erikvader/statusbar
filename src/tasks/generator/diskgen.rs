@@ -34,7 +34,7 @@ impl TimerGenerator for DiskGen {
         if let Some(a) = &arg.arg {
             for disk in a.split(",") {
                 if !avail_disk.contains(disk) {
-                    eprintln!("{} does not seem to be a mount point", disk);
+                    log::warn!("{} does not seem to be a mount point", disk);
                 } else {
                     self.disks.push(PathBuf::from(disk));
                 }
@@ -42,7 +42,7 @@ impl TimerGenerator for DiskGen {
         }
 
         if self.disks.is_empty() {
-            eprintln!("disks list is empty for some reason");
+            log::error!("disks list is empty for some reason");
             return Err(ExitReason::Error);
         }
 

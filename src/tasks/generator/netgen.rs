@@ -36,7 +36,7 @@ impl TimerGenerator for NetGen {
         if let Some(a) = &arg.arg {
             for iface in a.split(" ") {
                 if !avail_net.contains(iface) {
-                    eprintln!("{} is not a connected interface", iface);
+                    log::error!("{} is not a connected interface", iface);
                     return Err(ExitReason::Error);
                 }
                 self.interfaces.push(iface.to_string());
@@ -44,7 +44,7 @@ impl TimerGenerator for NetGen {
         }
 
         if self.interfaces.is_empty() {
-            eprintln!("interfaces list is for some reason empty");
+            log::error!("interfaces list is for some reason empty");
             return Err(ExitReason::Error);
         }
 
@@ -95,7 +95,7 @@ impl TimerGenerator for NetGen {
                 self.total = !self.total;
             },
             _ => {
-                eprintln!("got unexpected message");
+                log::info!("got unexpected message");
             }
         }
         Ok(false)

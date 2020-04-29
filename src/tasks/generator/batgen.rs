@@ -28,7 +28,7 @@ impl BatGen {
 impl TimerGenerator for BatGen {
     async fn init(&mut self, _arg: &GenArg) -> Result<()> {
         if !Path::new(CAP_FILE).exists() {
-            eprintln!("couldn't find a battery");
+            log::warn!("couldn't find a battery");
             self.has_battery = false;
         } else {
             self.has_battery = true;
@@ -41,7 +41,7 @@ impl TimerGenerator for BatGen {
         self.capacity = match cap.trim_end().parse() {
             Ok(c) => c,
             Err(_) => {
-                eprintln!("couldn't parse capacity");
+                log::warn!("couldn't parse capacity");
                 std::u8::MAX
             }
         };

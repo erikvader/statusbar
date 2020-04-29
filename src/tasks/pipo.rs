@@ -19,7 +19,7 @@ pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdo
         Ok(()) => (),
         Err(Sys(errno)) if errno == EEXIST => (),
         Err(e) => {
-            eprintln!("couldn't create pipo at {} because '{}'", FIFO_PATH, e);
+            log::error!("couldn't create pipo at {} because '{}'", FIFO_PATH, e);
             return ExitReason::Error;
         }
     };
@@ -33,7 +33,7 @@ pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdo
             let mut reader = match File::open(FIFO_PATH).await {
                 Ok(f) => BufReader::new(f),
                 Err(e) => {
-                    eprintln!("couldn't open pipe '{}' because '{}'", FIFO_PATH, e);
+                    log::error!("couldn't open pipe '{}' because '{}'", FIFO_PATH, e);
                     return ExitReason::Error;
                 }
             };
@@ -42,6 +42,10 @@ pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdo
             while let Ok(c) = reader.read_line(&mut buf).await {
                 if c == 0 {
                     break;
+                }
+
+                if !buf.ends_with("\n") {
+                    log::warn!("read line without a newline");
                 }
                 let content = buf.trim_end();
 
@@ -52,12 +56,18 @@ pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdo
                     };
 
                 if gid == "EXIT" {
+                    log::info!("got EXIT message");
                     break 'outer ExitReason::Normal;
                 }
 
+                log::trace!("'{}', '{}'", gid, msg);
+
                 if let Some(send) = gens.get_mut(gid) {
                     match send.try_send(msg.to_string()) {
-                        Err(mpsc::error::TrySendError::Closed(_)) => break 'outer ExitReason::Error,
+                        Err(mpsc::error::TrySendError::Closed(_)) => {
+                            log::error!("receiver closed");
+                            break 'outer ExitReason::Error
+                        },
                         _ => ()
                     }
                 }
@@ -75,7 +85,7 @@ pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdo
 
     // remove pipe
     if let Err(e) = unlink(FIFO_PATH) {
-        eprintln!("Couldn't remove pipe at {} because '{}'", FIFO_PATH, e);
+        log::warn!("Couldn't remove pipe at {} because '{}'", FIFO_PATH, e);
     }
 
     reason

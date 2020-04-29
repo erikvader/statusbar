@@ -76,7 +76,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
         .and_then(|l| spawn_dzen(&xin, "r", &bar_width, &bar_width)
                         .and_then(|r| Ok((l, r))))
         .map_err(|e| {
-            eprintln!("couldn't spawn dzen '{}'", e);
+            log::error!("couldn't spawn dzen '{}'", e);
             return ExitReason::Error;
         })
         .unwrap();
@@ -89,7 +89,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
             time::delay_for(Duration::from_secs(2)).await;
             let t = spawn_tray()
                 .map_err(|e| {
-                    eprintln!("coudln't spawn trayer '{}'", e);
+                    log::warn!("coudln't spawn trayer '{}'", e);
                 })
                 .ok();
             *tray2.lock().unwrap() = t;
@@ -104,6 +104,9 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
             Err(RecvError::Lagged(_)) => continue,
             Err(_) => break ExitReason::Normal,
             Ok((id, msg)) => {
+                // if id == *config.iter().next().unwrap() {
+                //     log::trace!("'{}'({}), '{}'", config.get_output(), id.id, msg);
+                // }
                 if output.contains_key(&id) {
                     *output.get_mut(&id).unwrap() = msg;
                 }
@@ -125,7 +128,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
         );
 
         if let Err(e) = res {
-            eprintln!("couldn't write to dzen '{}'", e);
+            log::error!("couldn't write to dzen '{}'", e);
             return ExitReason::Error;
         }
     }

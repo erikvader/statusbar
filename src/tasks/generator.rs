@@ -220,7 +220,7 @@ where G: DBusGenerator + Sync + Send
                         self.0.handle_msg(s).await?;
                     }
                     Left(None) => {
-                        eprintln!("can't wait on more DBus signals?");
+                        log::error!("can't wait on more DBus signals?");
                         break Err(ExitReason::Error);
                     }
                 }
@@ -236,7 +236,7 @@ where G: DBusGenerator + Sync + Send
         // wait for main loop or dbus disconnect
         let ret = tokio::select! {
             err = &mut resource => {
-                eprintln!("dbus connection lost. '{}'", err);
+                log::error!("dbus connection lost. '{}'", err);
                 Err(ExitReason::Error)
             },
             ret = main_loop => ret

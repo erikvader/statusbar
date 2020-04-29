@@ -30,8 +30,8 @@ impl TimerGenerator for TempGen {
 
         if let Some(a) = &arg.arg {
             if !avail_comps.contains(a.as_str()) {
-                eprintln!("{} does not seem to be a proper temp thingy", a);
-                eprintln!("you can choose from: {:?}", avail_comps);
+                log::error!("{} does not seem to be a proper temp thingy", a);
+                log::info!("you can choose from: {:?}", avail_comps);
                 return Err(ExitReason::Error);
             } else {
                 self.name = a.to_string();

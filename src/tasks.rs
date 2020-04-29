@@ -39,7 +39,7 @@ where E: std::fmt::Display
 {
     fn from(e: E) -> Self {
         // TODO: don't just print
-        println!("got error '{}', converted it to ExitReason::Error", e);
+        log::error!("got error '{}', converted it to ExitReason::Error", e);
         ExitReason::Error
     }
 }

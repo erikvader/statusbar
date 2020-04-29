@@ -10,6 +10,8 @@ use core::time::Duration;
 use tasks::*;
 use tasks::main_task;
 
+use stderrlog as SL;
+
 // TODO: stoppa in name i GenArg?
 // TODO: få start att acceptera en lista utav GenArgs där alla måste
 // vara likadana förutom prepend som får (borde) vara annorlunda.
@@ -18,12 +20,27 @@ use tasks::main_task;
 // flera olika ställen med olika prepend. najs om man vill visa tiden
 // på olika skärmar, alla med olika ikoner, utan att behöva spawna en
 // annars identisk generator flera gånger.
+// TODO: ngt får xmonad status att visa fel ibland (iaf om man byter
+// skärm snabbt). Verkar vara xmonad som outputar fel ibland av ngn
+// anledning.
+// TODO: gör tray till en generator så att det går att skicka
+// meddelanden till den. Dessa meddelanden ska starta om trayer.
+// TODO: waita på alla barnprocesser? Behövs det?
 
 pub static mut HOME: String = String::new();
 
 fn main() {
     let h = std::env::var("HOME").expect("couldn't get HOME");
     unsafe {HOME = h;}
+
+    SL::new()
+        .module(std::module_path!())
+        .timestamp(SL::Timestamp::Second)
+        .show_level(true)
+        .color(SL::ColorChoice::Auto)
+        .verbosity(3) // 5 = trace, 1 = error
+        .init()
+        .expect("couldn't start logger");
 
     let setup = config::config().unwrap();
 

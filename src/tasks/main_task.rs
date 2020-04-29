@@ -53,7 +53,7 @@ pub async fn main(mut setup: SetupConfig) -> ExitReason {
     let mut reason = ExitReason::Normal;
     while let Some(res_r) = tasks.next().await {
         if let Err(_) = res_r {
-            eprintln!("coudln't join??");
+            log::warn!("coudln't join??");
             continue;
         }
         shutdown_pipo = shutdown_pipo.and_then(|p| p.send(()).ok()).and(None);
@@ -61,6 +61,6 @@ pub async fn main(mut setup: SetupConfig) -> ExitReason {
         reason = reason.combine(r);
     }
 
-    println!("all tasks have finished, exiting...");
+    log::info!("all tasks have finished, exiting...");
     reason
 }

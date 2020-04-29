@@ -15,9 +15,10 @@ impl Generator for EchoGen {
                    mut from_pipo: mpsc::Receiver<String>,
                    id: GenId,
                    arg: GenArg,
-                   _name: String) -> ExitReason
+                   name: String) -> ExitReason
     {
         while let Some(inp) = from_pipo.recv().await {
+            log::trace!("'{}'({}), '{}'", name, id.id, inp);
             let fixed = fix_dzen_string(inp);
             let s = arg.get_builder().add(fixed).to_string();
             if let Err(_) = to_printer.send((id, s)) {

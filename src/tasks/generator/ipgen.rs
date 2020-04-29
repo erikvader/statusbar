@@ -129,14 +129,14 @@ where C: DN::NonblockReply
     match get_device(interface, conn.clone()).await {
         Err(e) => {
             to_show = "no device".to_string();
-            eprintln!("no device cuz {}", e);
+            log::warn!("no device cuz {}", e);
         }
         Ok(devpath) => {
             let show_ssid = show_ssid && {
                 match is_device_wifi(&devpath, conn.clone()).await {
                     Ok(w) => w,
                     Err(e) => {
-                        eprintln!("not wifi cuz {}", e);
+                        log::warn!("not wifi cuz {}", e);
                         false
                     }
                 }
@@ -146,7 +146,7 @@ where C: DN::NonblockReply
                 match get_device_ssid(&devpath, conn.clone()).await {
                     Err(e) => {
                         to_show = "no ssid".to_string();
-                        eprintln!("no ssid cuz {}", e);
+                        log::warn!("no ssid cuz {}", e);
                     }
                     Ok(ssid) => {
                         to_show = ssid;
@@ -156,7 +156,7 @@ where C: DN::NonblockReply
                 match get_device_ip(&devpath, conn).await {
                     Err(e) => {
                         to_show = "no ip".to_string();
-                        eprintln!("no ip cuz {}", e);
+                        log::warn!("no ip cuz {}", e);
                     }
                     Ok(i) => {
                         to_show = i;
@@ -191,7 +191,7 @@ impl DBusGenerator for IpGen {
             if let Some(iface) = &arg.arg {
                 iface.to_string()
             } else {
-                eprintln!("I want an interface as argument");
+                log::error!("I want an interface as argument");
                 return Err(ExitReason::Error);
             };
 
@@ -215,7 +215,7 @@ impl DBusGenerator for IpGen {
         if let Some(s) = data.get1() {
             self.state = s;
         } else {
-            eprintln!("signal didn't contain the new state");
+            log::warn!("signal didn't contain the new state");
         }
         Ok(())
     }

@@ -51,7 +51,7 @@ impl Generator for OneGen {
             if let Some(cmd) = &arg.arg {
                 cmd.to_string()
             } else {
-                eprintln!("I want an command as argument");
+                log::error!("I want a command as argument");
                 return ExitReason::Error;
             };
 
@@ -59,7 +59,7 @@ impl Generator for OneGen {
         let mut proc = match spawn(&cmd, true) {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("{}", e);
+                log::error!("{}", e);
                 return ExitReason::Error;
             }
         };
@@ -77,7 +77,7 @@ impl Generator for OneGen {
                             proc = match spawn(&cmd, false) {
                                 Ok(c) => c,
                                 Err(e) => {
-                                    eprintln!("{}", e);
+                                    log::error!("{}", e);
                                     break ExitReason::Error;
                                 }
                             };
@@ -106,7 +106,7 @@ impl Generator for OneGen {
                         run_cmd = false;
                     }
                     Err(e) => {
-                        eprintln!("{}", e);
+                        log::error!("{}", e);
                         break ExitReason::Error;
                     }
                 }
