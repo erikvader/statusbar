@@ -98,7 +98,7 @@ impl Generator for OneGen {
                             .add(fixed)
                             .name_click(1, &name)
                             .to_string();
-                        if let Err(_) = to_printer.send((id, clicked)) {
+                        if let Err(_) = to_printer.send(Msg::Gen(id, clicked)) {
                             break ExitReason::Error;
                         }
                     }

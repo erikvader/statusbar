@@ -136,7 +136,7 @@ impl<G: TimerGenerator + Sync + Send> Generator for TimerWrap<G> {
                 delayer.reset(tokio::time::Instant::now() + delay);
             }
             let s = unwrap_er!(self.0.display(&name, &arg));
-            if let Err(_) = to_printer.send((id, s)) {
+            if let Err(_) = to_printer.send(Msg::Gen(id, s)) {
                 break ExitReason::Error;
             }
             let msg = select! {
@@ -200,7 +200,7 @@ where G: DBusGenerator + Sync + Send
 
             let res = loop {
                 let s = self.0.update(conn.clone(), name.as_str(), &arg).await?;
-                if let Err(_) = to_printer.send((id, s)) {
+                if let Err(_) = to_printer.send(Msg::Gen(id, s)) {
                     break Err(ExitReason::Error);
                 }
 

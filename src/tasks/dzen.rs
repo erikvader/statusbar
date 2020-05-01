@@ -5,6 +5,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::select;
 use tokio::process::Command;
 use tokio::time::{self, Duration, Instant};
+use tokio::sync::Mutex;
 use std::sync::Arc;
 use crate::config::*;
 use crate::bar::*;
@@ -85,7 +86,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
         .unwrap();
 
     // spawn tray
-    let tray = Arc::new(std::sync::Mutex::new(None));
+    let tray = Arc::new(Mutex::new(None));
     if config.wants_tray() {
         let tray2 = tray.clone();
         tokio::spawn(async move {
@@ -95,7 +96,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
                     log::warn!("coudln't spawn trayer '{}'", e);
                 })
                 .ok();
-            *tray2.lock().unwrap() = t;
+            *tray2.lock().await = t;
         });
     }
 
@@ -114,7 +115,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
                 match recv {
                     Err(RecvError::Lagged(_)) => continue,
                     Err(_) => break ExitReason::Normal,
-                    Ok((id, msg)) => {
+                    Ok(Msg::Gen(id, msg)) => {
                         if output.contains_key(&id) {
                             *output.get_mut(&id).unwrap() = msg;
 
@@ -124,6 +125,28 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
                             }
                         }
                         continue;
+                    },
+                    Ok(Msg::Tray) => {
+                        if config.wants_tray() {
+                            let tray2 = tray.clone();
+                            tokio::spawn(async move {
+                                let mut l = tray2.lock().await;
+                                if let Some(c) = l.as_mut() {
+                                    if let Err(e) = c.kill() {
+                                        log::warn!("couldn't kill tray: {}", e);
+                                    }
+                                    if let Err(e) = c.await {
+                                        log::warn!("couldn't await tray: {}", e);
+                                    }
+                                }
+                                let t = spawn_tray()
+                                    .map_err(|e| {
+                                        log::warn!("coudln't spawn trayer '{}'", e);
+                                    })
+                                    .ok();
+                                *l = t;
+                            });
+                        }
                     }
                 }
         }

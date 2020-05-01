@@ -4,16 +4,20 @@ use nix::Error::Sys;
 use nix::errno::Errno::EEXIST;
 use std::collections::HashMap;
 use tokio;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc,oneshot,broadcast};
 use tokio::select;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::signal::unix::{signal, SignalKind};
-use tokio::sync::oneshot;
 use crate::config::*;
-use crate::tasks::ExitReason;
+use crate::tasks::{ExitReason,Msg};
 
-pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdown: oneshot::Receiver<()>) -> ExitReason {
+pub async fn pipo_reader(
+    mut gens: HashMap<String, mpsc::Sender<String>>,
+    shutdown: oneshot::Receiver<()>,
+    to_printer: broadcast::Sender<Msg>
+) -> ExitReason
+{
     // create pipe
     match mkfifo(FIFO_PATH, stat::Mode::S_IRWXU) {
         Ok(()) => (),
@@ -67,6 +71,11 @@ pub async fn pipo_reader(mut gens: HashMap<String, mpsc::Sender<String>>, shutdo
                             break 'outer ExitReason::Error
                         },
                         _ => ()
+                    }
+                } else if gid == "TRAY" {
+                    if let Err(e) = to_printer.send(Msg::Tray) {
+                        log::error!("to printer died? '{:?}'", e);
+                        break 'outer ExitReason::Error;
                     }
                 }
                 buf.clear();

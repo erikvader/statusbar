@@ -5,7 +5,11 @@ pub mod pipo;
 
 use crate::tasks::generator::GenId;
 
-pub type Msg = (GenId, String);
+#[derive(Clone,Debug)]
+pub enum Msg {
+    Gen(GenId, String),
+    Tray,
+}
 
 // TODO: add a "there was an error but not fatal enough to terminate
 // the whole program" which will output some error message as

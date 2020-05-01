@@ -20,7 +20,7 @@ impl Generator for EchoGen {
         while let Some(inp) = from_pipo.recv().await {
             let fixed = fix_dzen_string(inp);
             let s = arg.get_builder().add(fixed).to_string();
-            if let Err(_) = to_printer.send((id, s)) {
+            if let Err(_) = to_printer.send(Msg::Gen(id, s)) {
                 return ExitReason::Error;
             }
         }

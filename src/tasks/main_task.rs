@@ -19,7 +19,7 @@ pub async fn main(mut setup: SetupConfig) -> ExitReason {
 
     let mut pipo_map = HashMap::new();
 
-    {
+    let mut shutdown_pipo = {
         let (broad_send, _) = broadcast::channel(MPSC_SIZE);
 
         let mut args = setup.extract_args();
@@ -42,13 +42,13 @@ pub async fn main(mut setup: SetupConfig) -> ExitReason {
         for b in setup.take_bars().into_iter() {
             tasks.push(tokio::spawn(dzen_printer(broad_send.subscribe(), b)));
         }
-    }
 
-    let mut shutdown_pipo = Some({
-        let (sp, pipo_shutdown_recv) = oneshot::channel();
-        tasks.push(tokio::spawn(pipo_reader(pipo_map, pipo_shutdown_recv)));
-        sp
-    });
+        Some({
+            let (sp, pipo_shutdown_recv) = oneshot::channel();
+            tasks.push(tokio::spawn(pipo_reader(pipo_map, pipo_shutdown_recv, broad_send)));
+            sp
+        })
+    };
 
     let mut reason = ExitReason::Normal;
     while let Some(res_r) = tasks.next().await {
