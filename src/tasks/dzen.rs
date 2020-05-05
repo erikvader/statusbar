@@ -7,6 +7,7 @@ use tokio::process::Command;
 use tokio::time::{self, Duration, Instant};
 use tokio::sync::Mutex;
 use std::sync::Arc;
+use nix::sys::signal;
 use crate::config::*;
 use crate::bar::*;
 use crate::tasks::ExitReason;
@@ -132,7 +133,8 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
                             tokio::spawn(async move {
                                 let mut l = tray2.lock().await;
                                 if let Some(c) = l.as_mut() {
-                                    if let Err(e) = c.kill() {
+                                    let id = nix::unistd::Pid::from_raw(c.id() as i32);
+                                    if let Err(e) = signal::kill(id, signal::Signal::SIGTERM) {
                                         log::warn!("couldn't kill tray: {}", e);
                                     }
                                     if let Err(e) = c.await {
