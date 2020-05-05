@@ -4,13 +4,19 @@ import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
 import os
+from time import sleep
 
 def connect():
     if 'PULSE_DBUS_SERVER' in os.environ:
         address = os.environ['PULSE_DBUS_SERVER']
     else:
         bus = dbus.SessionBus()
-        server_lookup = bus.get_object("org.PulseAudio1", "/org/pulseaudio/server_lookup1")
+        for _ in range(2):
+            try:
+                server_lookup = bus.get_object("org.PulseAudio1", "/org/pulseaudio/server_lookup1")
+                break
+            except dbus.exceptions.DBusException:
+                sleep(5)
         address = server_lookup.Get("org.PulseAudio.ServerLookup1", "Address", dbus_interface="org.freedesktop.DBus.Properties")
 
     return dbus.connection.Connection(address)
