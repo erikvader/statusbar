@@ -69,7 +69,6 @@ impl TimerGenerator for DiskGen {
             bu = bu.add_not_empty("/")
                 .new_section()
                 .add(perc.to_string())
-                .add("%")
                 .color_step(perc, LEVELS);
         }
 

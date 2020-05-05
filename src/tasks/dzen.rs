@@ -71,7 +71,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
     // output buffer
     let mut output = HashMap::<GenId, String>::new();
     for id in config.iter() {
-        output.insert(*id, "".to_string());
+        output.insert(*id, "xxx".to_string());
     }
 
     // spawn dzen on the right screen
