@@ -31,7 +31,7 @@ pub fn spawn(cmd: &str, first: bool) -> std::io::Result<tokio::process::Child> {
         .arg(cmd)
         .env("PATH", path)
         .env("STS_INIT", if first {"yes"} else {""})
-        .kill_on_drop(true)
+        // .kill_on_drop(true)
         .stdout(std::process::Stdio::piped())
         .spawn()
 }
@@ -55,64 +55,79 @@ impl Generator for OneGen {
                 return ExitReason::Error;
             };
 
-        let mut run_cmd = true;
-        let mut proc = match spawn(&cmd, true) {
-            Ok(c) => c,
-            Err(e) => {
-                log::error!("{}", e);
-                return ExitReason::Error;
-            }
-        };
-        let mut sout = BufReader::new(proc.stdout.unwrap()).lines();
-
-        let reas = loop {
-            let line = tokio::select! {
-                out = sout.next_line(), if run_cmd => {
-                    Some(out)
+        let mut first = true;
+        loop {
+            // start process
+            let mut proc = match spawn(&cmd, first) {
+                Ok(c) => c,
+                Err(e) => {
+                    log::error!("{}", e);
+                    return ExitReason::Error;
                 }
-                x = from_pipo.recv() => {
-                    match x {
-                        None => break ExitReason::Normal,
-                        Some(_) if !run_cmd => {
-                            proc = match spawn(&cmd, false) {
-                                Ok(c) => c,
-                                Err(e) => {
-                                    log::error!("{}", e);
-                                    break ExitReason::Error;
-                                }
-                            };
-                            sout = BufReader::new(proc.stdout.unwrap()).lines();
-                            run_cmd = true;
-                            None
+            };
+            let mut sout = BufReader::new(proc.stdout.as_mut().unwrap()).lines();
+            first = false;
+
+            // read lines until there are no more
+            let (term, er) = loop {
+                let line = tokio::select! {
+                    out = sout.next_line() => {
+                        Some(out)
+                    }
+                    x = from_pipo.recv() => {
+                        match x {
+                            None => break (true, Some(ExitReason::Normal)),
+                            Some(_) => None
                         }
-                        Some(_) => None
+                    }
+                };
+
+                if let Some(l) = line {
+                    match l {
+                        Ok(Some(x)) => {
+                            let fixed = fix_dzen_string(x);
+                            let clicked = arg.get_builder()
+                                .add(fixed)
+                                .name_click(1, &name)
+                                .to_string();
+
+                            if let Err(_) = to_printer.send(Msg::Gen(id, clicked)) {
+                                break (true, Some(ExitReason::Error));
+                            }
+                        }
+                        Ok(None) => {
+                            break (false, None);
+                        }
+                        Err(e) => {
+                            log::error!("{}", e);
+                            break (true, Some(ExitReason::Error));
+                        }
                     }
                 }
             };
 
-            if let Some(l) = line {
-                match l {
-                    Ok(Some(x)) => {
-                        let fixed = fix_dzen_string(x);
-                        let clicked = arg.get_builder()
-                            .add(fixed)
-                            .name_click(1, &name)
-                            .to_string();
-                        if let Err(_) = to_printer.send(Msg::Gen(id, clicked)) {
-                            break ExitReason::Error;
-                        }
-                    }
-                    Ok(None) => {
-                        run_cmd = false;
-                    }
-                    Err(e) => {
-                        log::error!("{}", e);
-                        break ExitReason::Error;
-                    }
+            // potentially terminate and wait
+            if term {
+                log::info!("terminating '{}'", cmd);
+                if let Err(e) = crate::kill::terminate(&proc) {
+                    log::warn!("couldn't kill '{}' because {}", cmd, e);
                 }
             }
-        };
 
-        reas
+            if let Err(e) = proc.await {
+                log::warn!("couldn't await '{}' because {}", cmd, e);
+            }
+
+            // should we exit now?
+            if let Some(e) = er {
+                break e;
+            }
+
+            // wait for someone to click on us
+            match from_pipo.recv().await {
+                None => break ExitReason::Normal,
+                Some(_) => ()
+            }
+        }
     }
 }

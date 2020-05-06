@@ -7,7 +7,6 @@ use tokio::process::Command;
 use tokio::time::{self, Duration, Instant};
 use tokio::sync::Mutex;
 use std::sync::Arc;
-use nix::sys::signal;
 use crate::config::*;
 use crate::bar::*;
 use crate::tasks::ExitReason;
@@ -21,7 +20,7 @@ fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<tokio:
     let fg = crate::config::theme("fg").unwrap_or("#ffffff");
     let bg = crate::config::theme("bg").unwrap_or("#000000");
     Command::new("dzen2")
-        .kill_on_drop(true)
+        // .kill_on_drop(true)
         .stdin(std::process::Stdio::piped())
         .args(&["-fg", fg])
         .args(&["-bg", bg])
@@ -49,7 +48,7 @@ fn build_side<'a,'b>(
 
 fn spawn_tray() -> tokio::io::Result<tokio::process::Child> {
     Command::new("trayer")
-        .kill_on_drop(true)
+        // .kill_on_drop(true)
         .args(&["--edge", "top",
                 "--widthtype", "request",
                 "--height", "16",
@@ -77,7 +76,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
     // spawn dzen on the right screen
     let bar_width = (config.get_screen_width() / 2).to_string();
     let xin = config.get_xinerama().to_string();
-    let (dzenl, dzenr) = spawn_dzen(&xin, "l", "0", &bar_width)
+    let (mut dzenl, mut dzenr) = spawn_dzen(&xin, "l", "0", &bar_width)
         .and_then(|l| spawn_dzen(&xin, "r", &bar_width, &bar_width)
                         .and_then(|r| Ok((l, r))))
         .map_err(|e| {
@@ -101,14 +100,14 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
         });
     }
 
-    let mut lstdin = dzenl.stdin.unwrap();
-    let mut rstdin = dzenr.stdin.unwrap();
+    let lstdin = dzenl.stdin.as_mut().unwrap();
+    let rstdin = dzenr.stdin.as_mut().unwrap();
 
     let mut delay = time::delay_for(ACC_DUR);
     let mut waiting = false;
     // receive new strings to output buffer and occasionally print
     // them to dzen
-    loop {
+    let ex = loop {
         // accumulate close changes as one (`ACC_DUR` time from first message)
         select! {
             _    = &mut delay, if waiting => (),
@@ -133,20 +132,17 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
                             tokio::spawn(async move {
                                 let mut l = tray2.lock().await;
                                 if let Some(c) = l.as_mut() {
-                                    let id = nix::unistd::Pid::from_raw(c.id() as i32);
-                                    if let Err(e) = signal::kill(id, signal::Signal::SIGTERM) {
-                                        log::warn!("couldn't kill tray: {}", e);
-                                    }
-                                    if let Err(e) = c.await {
-                                        log::warn!("couldn't await tray: {}", e);
+                                    if let Err(_) = crate::kill::terminate_wait(c).await {
+                                        log::warn!("couldn't terminate_wait tray for restart");
+                                    } else {
+                                        let t = spawn_tray()
+                                            .map_err(|e| {
+                                                log::warn!("coudln't spawn trayer '{}'", e);
+                                            })
+                                            .ok();
+                                        *l = t;
                                     }
                                 }
-                                let t = spawn_tray()
-                                    .map_err(|e| {
-                                        log::warn!("coudln't spawn trayer '{}'", e);
-                                    })
-                                    .ok();
-                                *l = t;
                             });
                         }
                     }
@@ -172,5 +168,23 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
             log::error!("couldn't write to dzen '{}'", e);
             return ExitReason::Error;
         }
+    };
+
+    // kill stuff
+    let mut l = tray.lock().await;
+    if let Some(c) = l.as_mut() {
+        if let Err(_) = crate::kill::terminate_wait(c).await {
+            log::warn!("couldn't kill tray when quitting");
+        }
     }
+
+    if let Err(_) = crate::kill::terminate_wait(&mut dzenl).await {
+        log::warn!("couldn't kill left dzen");
+    }
+
+    if let Err(_) = crate::kill::terminate_wait(&mut dzenr).await {
+        log::warn!("couldn't kill right dzen");
+    }
+
+    ex
 }

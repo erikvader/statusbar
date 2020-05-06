@@ -3,6 +3,7 @@ mod bar;
 mod dzen_format;
 mod x;
 mod config;
+mod kill;
 
 use tokio;
 use core::time::Duration;
@@ -20,9 +21,7 @@ use stderrlog as SL;
 // flera olika ställen med olika prepend. najs om man vill visa tiden
 // på olika skärmar, alla med olika ikoner, utan att behöva spawna en
 // annars identisk generator flera gånger.
-// TODO: gör tray till en generator så att det går att skicka
-// meddelanden till den. Dessa meddelanden ska starta om trayer.
-// TODO: waita på alla barnprocesser? Behövs det?
+// TODO: använd spawn_local med tanke på att det bara är en thread (basic scheduler)
 
 pub static mut HOME: String = String::new();
 
