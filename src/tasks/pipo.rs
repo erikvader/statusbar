@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use tokio;
 use tokio::sync::{mpsc,oneshot,broadcast};
 use tokio::select;
-use tokio::fs::File;
+use tokio::fs::OpenOptions;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::signal::unix::{signal, SignalKind};
 use crate::config::*;
@@ -33,54 +33,64 @@ pub async fn pipo_reader(
 
     // read pipe
     let main_loop = async {
-        'outer: loop {
-            let mut reader = match File::open(FIFO_PATH).await {
-                Ok(f) => BufReader::new(f),
-                Err(e) => {
-                    log::error!("couldn't open pipe '{}' because '{}'", FIFO_PATH, e);
-                    return ExitReason::Error;
-                }
-            };
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(false)
+            .open(FIFO_PATH)
+            .await;
 
-            let mut buf = String::new();
-            while let Ok(c) = reader.read_line(&mut buf).await {
-                if c == 0 {
+        let mut reader = match file {
+            Ok(f) => BufReader::new(f),
+            Err(e) => {
+                log::error!("couldn't open pipe '{}' because '{}'", FIFO_PATH, e);
+                return ExitReason::Error;
+            }
+        };
+
+        let mut er = ExitReason::Normal;
+        let mut buf = String::new();
+        while let Ok(c) = reader.read_line(&mut buf).await {
+            if c == 0 {
+                break;
+            }
+
+            if !buf.ends_with("\n") {
+                log::warn!("read line without a newline");
+            }
+            let content = buf.trim_end();
+
+            let (gid, msg) =
+                match content.match_indices(" ").next() {
+                    Some((i, _)) => (&content[..i], &content[i+1..]),
+                    _ => (content, "")
+                };
+
+            if gid == "EXIT" {
+                log::info!("got EXIT message");
+                break;
+            }
+
+            if let Some(send) = gens.get_mut(gid) {
+                match send.try_send(msg.to_string()) {
+                    Err(mpsc::error::TrySendError::Closed(_)) => {
+                        log::error!("receiver closed");
+                        er = ExitReason::Error;
+                        break;
+                    },
+                    _ => ()
+                }
+            } else if gid == "TRAY" {
+                if let Err(e) = to_printer.send(Msg::Tray) {
+                    log::error!("to printer died? '{:?}'", e);
+                    er = ExitReason::Error;
                     break;
                 }
-
-                if !buf.ends_with("\n") {
-                    log::warn!("read line without a newline");
-                }
-                let content = buf.trim_end();
-
-                let (gid, msg) =
-                    match content.match_indices(" ").next() {
-                        Some((i, _)) => (&content[..i], &content[i+1..]),
-                        _ => (content, "")
-                    };
-
-                if gid == "EXIT" {
-                    log::info!("got EXIT message");
-                    break 'outer ExitReason::Normal;
-                }
-
-                if let Some(send) = gens.get_mut(gid) {
-                    match send.try_send(msg.to_string()) {
-                        Err(mpsc::error::TrySendError::Closed(_)) => {
-                            log::error!("receiver closed");
-                            break 'outer ExitReason::Error
-                        },
-                        _ => ()
-                    }
-                } else if gid == "TRAY" {
-                    if let Err(e) = to_printer.send(Msg::Tray) {
-                        log::error!("to printer died? '{:?}'", e);
-                        break 'outer ExitReason::Error;
-                    }
-                }
-                buf.clear();
             }
+            buf.clear();
         }
+
+        er
     };
 
     let reason = select! {

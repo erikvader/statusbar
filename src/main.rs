@@ -22,6 +22,7 @@ use stderrlog as SL;
 // på olika skärmar, alla med olika ikoner, utan att behöva spawna en
 // annars identisk generator flera gånger.
 // TODO: använd spawn_local med tanke på att det bara är en thread (basic scheduler)
+// TODO: byt ut named pipe till sockets, eller kanske ha båda?
 
 pub static mut HOME: String = String::new();
 
