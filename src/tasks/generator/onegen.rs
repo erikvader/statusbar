@@ -86,10 +86,15 @@ impl Generator for OneGen {
                     match l {
                         Ok(Some(x)) => {
                             let fixed = fix_dzen_string(x);
-                            let clicked = arg.get_builder()
-                                .add(fixed)
-                                .name_click(1, &name)
-                                .to_string();
+
+                            let clicked = if !fixed.is_empty() {
+                                arg.get_builder()
+                                    .add(fixed)
+                                    .name_click(1, &name)
+                                    .to_string()
+                            } else {
+                                fixed
+                            };
 
                             if let Err(_) = to_printer.send(Msg::Gen(id, clicked)) {
                                 break (true, Some(ExitReason::Error));
