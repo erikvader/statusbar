@@ -11,7 +11,7 @@ where S: AsRef<str>
             let themed = crate::config::icon_theme(cont).unwrap_or(cont);
             let mut pathed = String::new() + crate::config::ICON_PATH + "/" + themed + ".xpm";
             if pathed.starts_with("~") {
-                pathed.replace_range(..1, unsafe{&crate::HOME});
+                pathed.replace_range(..1, &std::env::var("HOME").expect("couldn't get HOME"));
             }
             Cow::from(pathed)
         }

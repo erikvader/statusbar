@@ -23,7 +23,7 @@ pub fn spawn(cmd: &str, first: bool) -> std::io::Result<tokio::process::Child> {
     path.insert_str(0, ":");
     path.insert_str(0, crate::config::SCRIPT_PATH);
     if path.starts_with("~") {
-        path.replace_range(..1, unsafe{&crate::HOME});
+        path.replace_range(..1, &std::env::var("HOME").expect("couldn't get HOME"));
     }
 
     Command::new("sh")

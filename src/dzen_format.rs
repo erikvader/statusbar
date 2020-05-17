@@ -184,7 +184,7 @@ impl<'a> DzenBuilder<'a> {
         let mut tmp: Vec<Cow<'a, str>> = vec!["^i(".into()];
         let path = crate::config::ICON_PATH;
         if path.starts_with("~") {
-            let h = unsafe{crate::HOME.as_str()};
+            let h = std::env::var("HOME").expect("couldn't get HOME");
             tmp.push(h.into());
             tmp.push(path[1..].into());
         } else {

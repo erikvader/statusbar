@@ -24,12 +24,7 @@ use stderrlog as SL;
 // TODO: använd spawn_local med tanke på att det bara är en thread (basic scheduler)
 // TODO: byt ut named pipe till sockets, eller kanske ha båda?
 
-pub static mut HOME: String = String::new();
-
 fn main() {
-    let h = std::env::var("HOME").expect("couldn't get HOME");
-    unsafe {HOME = h;}
-
     SL::new()
         .module(std::module_path!())
         .timestamp(SL::Timestamp::Second)
