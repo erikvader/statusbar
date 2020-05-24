@@ -36,16 +36,15 @@ impl TimerGenerator for NetGen {
         if let Some(a) = &arg.arg {
             for iface in a.split(" ") {
                 if !avail_net.contains(iface) {
-                    log::error!("{} is not a connected interface", iface);
-                    return Err(ExitReason::Error);
+                    log::warn!("{} is not a connected interface", iface);
                 }
                 self.interfaces.push(iface.to_string());
             }
         }
 
         if self.interfaces.is_empty() {
-            log::error!("interfaces list is for some reason empty");
-            return Err(ExitReason::Error);
+            log::warn!("interfaces list is for some reason empty");
+            return Err(ExitReason::NonFatal);
         }
 
         self.timeout = self.get_delay(arg);

@@ -42,8 +42,8 @@ impl TimerGenerator for DiskGen {
         }
 
         if self.disks.is_empty() {
-            log::error!("disks list is empty for some reason");
-            return Err(ExitReason::Error);
+            log::warn!("disks list is empty for some reason");
+            return Err(ExitReason::NonFatal);
         }
 
         Ok(())

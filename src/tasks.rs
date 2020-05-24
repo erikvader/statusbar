@@ -11,30 +11,49 @@ pub enum Msg {
     Tray,
 }
 
-// TODO: add a "there was an error but not fatal enough to terminate
-// the whole program" which will output some error message as
-// generator output.
 #[derive(PartialEq,Eq,Clone,Copy,Debug)]
 pub enum ExitReason {
     Signal,
     Error,
-    SignalError,
-    Normal
+    Normal,
+    NonFatal,
 }
 
-impl ExitReason {
-    pub fn combine(self, other: Self) -> Self {
-        fn rec(me: ExitReason, other: ExitReason, second: bool) -> ExitReason {
-            match (me, other) {
-                (ExitReason::Error, ExitReason::Signal) => ExitReason::SignalError,
-                (ExitReason::SignalError, _) => ExitReason::SignalError,
-                (ExitReason::Normal, a) => a,
-                (a, b) if a == b => a,
-                (_, _) if second => panic!("there is some missed case"),
-                (a, b) => rec(b, a, true)
-            }
+#[derive(Debug)]
+pub enum ProcessExitReason {
+    Okay,
+    Error(Vec<ExitReason>),
+}
+
+type PRE = ProcessExitReason;
+type ER = ExitReason;
+
+impl ProcessExitReason {
+    pub fn new() -> Self {
+        ProcessExitReason::Okay
+    }
+
+    pub fn combine(self, reason: ExitReason) -> Self {
+        match (self, reason) {
+            (p, ER::Normal) => p,
+            (p, ER::NonFatal) => p,
+            (PRE::Okay, e) => PRE::Error(vec![e]),
+            (PRE::Error(mut v), e) if !v.contains(&e) => {
+                v.push(e);
+                PRE::Error(v)
+            },
+            (p, _) => p,
         }
-        rec(self, other, false)
+    }
+
+    pub fn get_exit_code(&self) -> i32 {
+        match self {
+            PRE::Okay => 0,
+            PRE::Error(v) if v.contains(&ER::Error) && v.contains(&ER::Signal) => 3,
+            PRE::Error(v) if v.contains(&ER::Signal) => 2,
+            PRE::Error(v) if v.contains(&ER::Error) => 1,
+            PRE::Error(_) => panic!("invalid state")
+        }
     }
 }
 

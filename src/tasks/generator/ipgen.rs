@@ -191,8 +191,8 @@ impl DBusGenerator for IpGen {
             if let Some(iface) = &arg.arg {
                 iface.to_string()
             } else {
-                log::error!("I want an interface as argument");
-                return Err(ExitReason::Error);
+                log::warn!("I want an interface as argument");
+                return Err(ExitReason::NonFatal);
             };
 
         // TODO: use a state that indicates that networkmanager is

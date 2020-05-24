@@ -7,14 +7,14 @@ use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 use tokio::sync::oneshot;
 use crate::bar::*;
-use super::ExitReason;
+use super::{ProcessExitReason,ExitReason};
 use super::generator::{genid_to_generator,GenArg};
 use super::dzen::dzen_printer;
 use super::pipo::pipo_reader;
 
 const MPSC_SIZE: usize = 32;
 
-pub async fn main(mut setup: SetupConfig) -> ExitReason {
+pub async fn main(mut setup: SetupConfig) -> ProcessExitReason {
     let mut tasks = FuturesUnordered::<JoinHandle<ExitReason>>::new();
 
     let mut pipo_map = HashMap::new();
@@ -50,15 +50,21 @@ pub async fn main(mut setup: SetupConfig) -> ExitReason {
         })
     };
 
-    let mut reason = ExitReason::Normal;
+    let mut reason = ProcessExitReason::new();
     while let Some(res_r) = tasks.next().await {
-        if let Err(_) = res_r {
-            log::warn!("coudln't join??");
+        if let Err(e) = res_r {
+            log::warn!("coudln't join??, '{}'", e);
             continue;
         }
+
+        let er = res_r.unwrap();
+        if er == ExitReason::NonFatal {
+            log::warn!("something exited non-fatally!");
+            continue;
+        }
+
         shutdown_pipo = shutdown_pipo.and_then(|p| p.send(()).ok()).and(None);
-        let r = res_r.unwrap();
-        reason = reason.combine(r);
+        reason = reason.combine(er);
     }
 
     log::info!("all tasks have finished, exiting...");

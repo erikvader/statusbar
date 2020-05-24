@@ -74,9 +74,7 @@ pub async fn pipo_reader(
             if let Some(send) = gens.get_mut(gid) {
                 match send.try_send(msg.to_string()) {
                     Err(mpsc::error::TrySendError::Closed(_)) => {
-                        log::error!("receiver closed");
-                        er = ExitReason::Error;
-                        break;
+                        log::warn!("some generator receiver closed");
                     },
                     _ => ()
                 }

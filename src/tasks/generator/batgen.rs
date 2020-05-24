@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use super::{TimerGenerator,GenArg,Result};
+use super::{TimerGenerator,GenArg,Result,ExitReason};
 use std::path::Path;
 use tokio::fs;
 
@@ -9,7 +9,6 @@ const CAP_FILE:    &str = "/sys/class/power_supply/BAT0/capacity";
 const STATUS_FILE: &str = "/sys/class/power_supply/BAT0/status";
 
 pub struct BatGen {
-    has_battery: bool,
     capacity: u8,
     charging: bool,
 }
@@ -17,7 +16,6 @@ pub struct BatGen {
 impl BatGen {
     pub fn new() -> Self {
         BatGen{
-            has_battery: false,
             capacity: 0,
             charging: false,
         }
@@ -29,9 +27,8 @@ impl TimerGenerator for BatGen {
     async fn init(&mut self, _arg: &GenArg) -> Result<()> {
         if !Path::new(CAP_FILE).exists() {
             log::warn!("couldn't find a battery");
-            self.has_battery = false;
+            return Err(ExitReason::NonFatal);
         } else {
-            self.has_battery = true;
         }
         Ok(())
     }
