@@ -2,7 +2,6 @@ use sysinfo::{SystemExt,NetworkExt};
 use std::collections::HashSet;
 use async_trait::async_trait;
 use super::{TimerGenerator,GenArg,Result,ExitReason};
-use crate::dzen_format::utils::bytes_to_ibibyte_string as byte_to_string;
 
 pub struct NetGen{
     sys: sysinfo::System,
@@ -72,10 +71,10 @@ impl TimerGenerator for NetGen {
         };
 
         let o = arg.get_builder()
-            .add(byte_to_string(up))
+            .add_ibibyte(up)
             .maybe_add(!self.total, "/s")
             .add(" / ")
-            .add(byte_to_string(down))
+            .add_ibibyte(down)
             .maybe_add(!self.total, "/s")
             .name_click(1, name)
             .name_click(3, name)

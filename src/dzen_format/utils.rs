@@ -36,41 +36,38 @@ impl<'a> DzenBuilder<'a> {
             self.add(s)
         }
     }
-}
 
-pub fn bytes_to_ibibyte_string(b: u64) -> String {
-    let mag = if b == 0 {
-        0 as f64
-    } else {
-        (b as f64).log2() / (1024 as f64).log2()
-    }.floor();
+    pub fn add_ibibyte(self, b: u64) -> Self {
+        let mag = if b == 0 {
+            0 as f64
+        } else {
+            (b as f64).log2() / (1024 as f64).log2()
+        }.floor();
 
-    let mut num = b as f64 / 1024_f64.powf(mag);
-    num *= 10_f64;
-    num = num.trunc();
+        let mut num = b as f64 / 1024_f64.powf(mag);
+        num *= 10_f64;
+        num = num.trunc();
 
-    let n = (num / 10_f64).trunc() as i32;
-    let d = (num % 10_f64) as i32;
+        let n = (num / 10_f64).trunc() as i32;
+        let d = (num % 10_f64) as i32;
 
-    let unit = match mag as u32 {
-        0 => "B",
-        1 => "KiB",
-        2 => "MiB",
-        3 => "GiB",
-        4 => "TiB",
-        5 => "PiB",
-        6 => "EiB",
-        7 => "ZiB",
-        _ => "YiB"
-    };
+        let unit = match mag as u32 {
+            0 => "B",
+            1 => "KiB",
+            2 => "MiB",
+            3 => "GiB",
+            4 => "TiB",
+            5 => "PiB",
+            6 => "EiB",
+            7 => "ZiB",
+            _ => "YiB"
+        };
 
-    let mut s = n.to_string();
-    if d > 0 {
-        s.push_str(".");
-        s.push_str(&d.to_string());
+        self.add(n.to_string())
+            .add(".")
+            .add(d.to_string())
+            .add(" ")
+            .add(unit)
     }
-    s.push_str(" ");
-    s.push_str(unit);
-
-    s
 }
+
