@@ -6,7 +6,7 @@ use super::tasks::generator::GenType as GT;
 use super::dzen_format::DzenBuilder as DB;
 
 pub const FIFO_PATH:   &str = "/tmp/statusbar_fifo";
-pub const DZEN_FONT:   &str = "xft:Ubuntu Mono:pixelsize=14:antialias=true:hinting=true";
+pub const DZEN_FONT:   &str = "Bitstream Vera Sans:pixelsize=14:antialias=true:hinting=true";
 pub const ICON_PATH:   &str = "~/Documents/statusbar/icons";
 pub const SCRIPT_PATH: &str = "~/Documents/statusbar/scripts";
 
