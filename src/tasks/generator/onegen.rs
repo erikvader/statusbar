@@ -5,6 +5,7 @@ use tokio::io::AsyncBufReadExt;
 use tokio::sync::mpsc;
 use tokio::sync::broadcast;
 use async_trait::async_trait;
+use crate::kill::ChildTerminator;
 use super::*;
 use crate::tasks::ExitReason;
 use crate::dzen_format::external::fix_dzen_string;
@@ -18,7 +19,7 @@ impl OneGen {
 }
 
 // TODO: move this to a more sensible location
-pub fn spawn(cmd: &str, first: bool) -> std::io::Result<tokio::process::Child> {
+pub fn spawn(cmd: &str, first: bool) -> std::io::Result<ChildTerminator> {
     let mut path = std::env::var("PATH").expect("couldn't get PATH");
     path.insert_str(0, ":");
     path.insert_str(0, crate::config::SCRIPT_PATH);
@@ -31,9 +32,10 @@ pub fn spawn(cmd: &str, first: bool) -> std::io::Result<tokio::process::Child> {
         .arg(cmd)
         .env("PATH", path)
         .env("STS_INIT", if first {"yes"} else {""})
-        // .kill_on_drop(true)
+        .kill_on_drop(false)
         .stdout(std::process::Stdio::piped())
         .spawn()
+        .map(|c| ChildTerminator::new(c))
 }
 
 #[async_trait]
@@ -65,7 +67,7 @@ impl Generator for OneGen {
                     return ExitReason::Error;
                 }
             };
-            let mut sout = BufReader::new(proc.stdout.as_mut().unwrap()).lines();
+            let mut sout = BufReader::new(proc.as_mut_ref().stdout.as_mut().unwrap()).lines();
             first = false;
 
             // read lines until there are no more
@@ -114,7 +116,7 @@ impl Generator for OneGen {
             // potentially terminate and wait
             if term {
                 log::info!("terminating '{}'", cmd);
-                if let Err(e) = crate::kill::terminate(&proc) {
+                if let Err(e) = proc.terminate() {
                     log::warn!("couldn't kill '{}' because {}", cmd, e);
                 }
             }

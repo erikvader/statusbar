@@ -7,6 +7,7 @@ use tokio::process::Command;
 use tokio::time::{self, Duration, Instant};
 use tokio::sync::Mutex;
 use std::sync::Arc;
+use crate::kill::*;
 use crate::config::*;
 use crate::bar::*;
 use crate::tasks::ExitReason;
@@ -16,11 +17,11 @@ use super::Msg;
 
 const ACC_DUR: Duration = Duration::from_millis(40);
 
-fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<tokio::process::Child> {
+fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<ChildTerminator> {
     let fg = crate::config::theme("fg").unwrap_or("#ffffff");
     let bg = crate::config::theme("bg").unwrap_or("#000000");
     Command::new("dzen2")
-        // .kill_on_drop(true)
+        .kill_on_drop(false)
         .stdin(std::process::Stdio::piped())
         .args(&["-fg", fg])
         .args(&["-bg", bg])
@@ -33,6 +34,7 @@ fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<tokio:
         .args(&["-dock"])
         .args(&["-e", ""])
         .spawn()
+        .map(|c| ChildTerminator::new(c))
 }
 
 fn build_side<'a,'b>(
@@ -46,20 +48,49 @@ fn build_side<'a,'b>(
         .fold(DzenBuilder::new(), |b, i| b % sep + i)
 }
 
-fn spawn_tray() -> tokio::io::Result<tokio::process::Child> {
-    Command::new("trayer")
-        // .kill_on_drop(true)
-        .args(&["--edge", "top",
-                "--widthtype", "request",
-                "--height", "16",
-                "--distance", "5",
-                // NOTE: this has a different way for specifying the
-                // screen, and I don't see how to choose one from
-                // xinerama index or output name, so this will always
-                // be put on the primary screen (which is basically
-                // always wanted).
-                "--monitor", "primary"])
-        .spawn()
+fn spawn_tray(secs: u64, p: Arc<Mutex<Option<ChildTerminator>>>) {
+    tokio::spawn(async move {
+        let mut l = match p.try_lock() {
+            Ok(lock) => lock,
+            Err(_) => {
+                log::info!("tray lock already taken, ignoring...");
+                return;
+            }
+        };
+
+        time::delay_for(Duration::from_secs(secs)).await;
+
+        if let Some(c) = l.as_mut() {
+            if let Err(e) = c.terminate() {
+                log::warn!("couldn't terminate tray '{}'", e);
+            }
+
+            if let Err(e) = c.await {
+                log::warn!("couldn't await because '{}'", e);
+            }
+        }
+
+        let t = Command::new("trayer")
+            .kill_on_drop(false)
+            .args(&["--edge", "top",
+                    "--widthtype", "request",
+                    "--height", "16",
+                    "--distance", "5",
+                    // NOTE: this has a different way for specifying the
+                    // screen, and I don't see how to choose one from
+                    // xinerama index or output name, so this will always
+                    // be put on the primary screen (which is basically
+                    // always wanted).
+                    "--monitor", "primary"])
+            .spawn()
+            .map(|c| ChildTerminator::new(c))
+            .map_err(|e| {
+                log::warn!("coudln't spawn trayer '{}'", e);
+            })
+            .ok();
+
+        *l = t;
+    });
 }
 
 pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig) -> ExitReason {
@@ -76,38 +107,33 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
     // spawn dzen on the right screen
     let bar_width = (config.get_screen_width() / 2).to_string();
     let xin = config.get_xinerama().to_string();
-    let (mut dzenl, mut dzenr) = spawn_dzen(&xin, "l", "0", &bar_width)
+
+    let tmp = spawn_dzen(&xin, "l", "0", &bar_width)
         .and_then(|l| spawn_dzen(&xin, "r", &bar_width, &bar_width)
-                        .and_then(|r| Ok((l, r))))
-        .map_err(|e| {
+                  .and_then(|r| Ok((l, r))));
+
+    let (mut dzenl, mut dzenr) = match tmp {
+        Ok(dldr) => dldr,
+        Err(e) => {
             log::error!("couldn't spawn dzen '{}'", e);
             return ExitReason::Error;
-        })
-        .unwrap();
+        }
+    };
 
     // spawn tray
     let tray = Arc::new(Mutex::new(None));
     if config.wants_tray() {
-        let tray2 = tray.clone();
-        tokio::spawn(async move {
-            time::delay_for(Duration::from_secs(2)).await;
-            let t = spawn_tray()
-                .map_err(|e| {
-                    log::warn!("coudln't spawn trayer '{}'", e);
-                })
-                .ok();
-            *tray2.lock().await = t;
-        });
+        spawn_tray(2, tray.clone());
     }
 
-    let lstdin = dzenl.stdin.as_mut().unwrap();
-    let rstdin = dzenr.stdin.as_mut().unwrap();
+    let lstdin = dzenl.as_mut_ref().stdin.as_mut().unwrap();
+    let rstdin = dzenr.as_mut_ref().stdin.as_mut().unwrap();
 
     let mut delay = time::delay_for(ACC_DUR);
     let mut waiting = false;
     // receive new strings to output buffer and occasionally print
     // them to dzen
-    let ex = loop {
+    loop {
         // accumulate close changes as one (`ACC_DUR` time from first message)
         select! {
             _    = &mut delay, if waiting => (),
@@ -128,22 +154,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
                     },
                     Ok(Msg::Tray) => {
                         if config.wants_tray() {
-                            let tray2 = tray.clone();
-                            tokio::spawn(async move {
-                                let mut l = tray2.lock().await;
-                                if let Some(c) = l.as_mut() {
-                                    if let Err(_) = crate::kill::terminate_wait(c).await {
-                                        log::warn!("couldn't terminate_wait tray for restart");
-                                    } else {
-                                        let t = spawn_tray()
-                                            .map_err(|e| {
-                                                log::warn!("coudln't spawn trayer '{}'", e);
-                                            })
-                                            .ok();
-                                        *l = t;
-                                    }
-                                }
-                            });
+                            spawn_tray(0, tray.clone());
                         }
                     }
                 }
@@ -168,23 +179,5 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
             log::error!("couldn't write to dzen '{}'", e);
             break ExitReason::Error;
         }
-    };
-
-    // kill stuff
-    let mut l = tray.lock().await;
-    if let Some(c) = l.as_mut() {
-        if let Err(_) = crate::kill::terminate_wait(c).await {
-            log::warn!("couldn't kill tray when quitting");
-        }
     }
-
-    if let Err(_) = crate::kill::terminate_wait(&mut dzenl).await {
-        log::warn!("couldn't kill left dzen");
-    }
-
-    if let Err(_) = crate::kill::terminate_wait(&mut dzenr).await {
-        log::warn!("couldn't kill right dzen");
-    }
-
-    ex
 }
