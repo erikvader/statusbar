@@ -166,7 +166,7 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
 
         if let Err(e) = res {
             log::error!("couldn't write to dzen '{}'", e);
-            return ExitReason::Error;
+            break ExitReason::Error;
         }
     };
 
