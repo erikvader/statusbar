@@ -11,6 +11,7 @@ pub struct BarConfig {
     tray: bool,
     separator: String,
     padding: usize,
+    split: f32,
 
     xinerama: usize,
     output: String,
@@ -106,6 +107,7 @@ impl BarConfig {
                     separator: " | ".to_string(),
                     tray: false,
                     padding: 10,
+                    split: 0.5,
                     output: output,
                     xinerama: xin,
                     rect: rect
@@ -151,6 +153,10 @@ impl BarConfig {
         self.padding
     }
 
+    pub fn get_split(&self) -> f32 {
+        self.split
+    }
+
     pub fn get_screen_width(&self) -> u16 {
         self.rect.2
     }
@@ -170,7 +176,8 @@ pub struct SetupBuilder {
     bars: Vec<BarBuilder>,
     map_other: Option<Box<dyn Fn(String) -> BarBuilder>>,
     global_sep: Option<String>,
-    global_pad: Option<usize>
+    global_pad: Option<usize>,
+    global_split: Option<f32>
 }
 
 pub struct BarBuilder {
@@ -179,7 +186,8 @@ pub struct BarBuilder {
     right: Vec<GenBuilder>,
     tray: bool,
     sep: Option<String>,
-    pad: Option<usize>
+    pad: Option<usize>,
+    split: Option<f32>
 }
 
 pub struct GenBuilder {
@@ -197,7 +205,8 @@ impl SetupBuilder {
             bars: Vec::new(),
             map_other: None,
             global_sep: None,
-            global_pad: None
+            global_pad: None,
+            global_split: None
         }
     }
 
@@ -223,6 +232,11 @@ impl SetupBuilder {
         self
     }
 
+    pub fn split(mut self, split: f32) -> Self {
+        self.global_split = Some(split);
+        self
+    }
+
     pub fn build(mut self) -> Result {
         let xsetup = x::get_x_setup()?;
 
@@ -241,6 +255,7 @@ impl SetupBuilder {
 
         let gsep = self.global_sep;
         let gpad = self.global_pad;
+        let gsplit = self.global_split;
         let mut setup = SetupConfig::new();
         for b in self.bars.into_iter() {
             let mut bar = BarConfig::new(b.output, &xsetup).ok_or("output is not connected")?;
@@ -250,6 +265,9 @@ impl SetupBuilder {
             }
             if let Some(pad) = b.pad.or_else(|| gpad) {
                 bar.padding = pad;
+            }
+            if let Some(split) = b.split.or_else(|| gsplit) {
+                bar.split = split;
             }
 
             SetupBuilder::build_side(b.left, &mut setup, |id| bar.add_left(id));
@@ -285,7 +303,8 @@ impl BarBuilder {
             right: Vec::new(),
             tray: false,
             sep: None,
-            pad: None
+            pad: None,
+            split: None
         }
     }
 
@@ -311,6 +330,11 @@ impl BarBuilder {
 
     pub fn padding(mut self, pad: usize) -> Self {
         self.pad = Some(pad);
+        self
+    }
+
+    pub fn split(mut self, split: f32) -> Self {
+        self.split = Some(split);
         self
     }
 }

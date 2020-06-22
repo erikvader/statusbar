@@ -17,7 +17,7 @@ use super::Msg;
 
 const ACC_DUR: Duration = Duration::from_millis(40);
 
-fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<ChildTerminator> {
+fn spawn_dzen(xin: &str, al: &str, x: u16, w: u16) -> tokio::io::Result<ChildTerminator> {
     let fg = crate::config::theme("fg").unwrap_or("#ffffff");
     let bg = crate::config::theme("bg").unwrap_or("#000000");
     Command::new("dzen2")
@@ -29,8 +29,8 @@ fn spawn_dzen(xin: &str, al: &str, x: &str, w: &str) -> tokio::io::Result<ChildT
         .args(&["-h", "26"])
         .args(&["-xs", xin])
         .args(&["-ta", al])
-        .args(&["-x", x])
-        .args(&["-w", w])
+        .args(&["-x", &x.to_string()])
+        .args(&["-w", &w.to_string()])
         .args(&["-dock"])
         .args(&["-e", ""])
         .spawn()
@@ -105,11 +105,13 @@ pub async fn dzen_printer(mut recv: broadcast::Receiver<Msg>, config: BarConfig)
     }
 
     // spawn dzen on the right screen
-    let bar_width = (config.get_screen_width() / 2).to_string();
+    // let bar_width = (config.get_screen_width() / 2).to_string();
+    let left_bar_width = ((config.get_screen_width() as f32) * config.get_split()) as u16;
+    let right_bar_width = config.get_screen_width() - left_bar_width;
     let xin = config.get_xinerama().to_string();
 
-    let tmp = spawn_dzen(&xin, "l", "0", &bar_width)
-        .and_then(|l| spawn_dzen(&xin, "r", &bar_width, &bar_width)
+    let tmp = spawn_dzen(&xin, "l", 0, left_bar_width)
+        .and_then(|l| spawn_dzen(&xin, "r", left_bar_width, right_bar_width)
                   .and_then(|r| Ok((l, r))));
 
     let (mut dzenl, mut dzenr) = match tmp {
