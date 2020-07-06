@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use super::{TimerGenerator,GenArg,Result,ExitReason};
 
 const LEVELS: &[(i32, &str)] = &[(90, "yellow"), (95, "red")];
+const FS_WHITELIST: &[&str] = &["nfs", "ext4"];
 
 pub struct DiskGen{
     sys: sysinfo::System,
@@ -57,7 +58,11 @@ impl TimerGenerator for DiskGen {
     fn display(&self, _name: &str, arg: &GenArg) -> Result<String> {
         let mut bu = arg.get_builder().new_section();
         for disk in self.sys.get_disks() {
-            if !self.disks.iter().any(|p| p == disk.get_mount_point()) {
+
+            let correct_fs = std::str::from_utf8(disk.get_file_system())
+                .map_or(false, |fs| FS_WHITELIST.contains(&fs));
+            let our_disk = self.disks.iter().any(|p| p == disk.get_mount_point());
+            if !correct_fs || !our_disk {
                 continue;
             }
 
