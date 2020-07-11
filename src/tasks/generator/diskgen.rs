@@ -1,5 +1,4 @@
 use sysinfo::{SystemExt,DiskExt};
-use std::collections::HashSet;
 use async_trait::async_trait;
 use std::path::PathBuf;
 use super::{TimerGenerator,GenArg,Result,ExitReason};
@@ -24,21 +23,9 @@ impl DiskGen {
 #[async_trait]
 impl TimerGenerator for DiskGen {
     async fn init(&mut self, arg: &GenArg) -> Result<()> {
-        self.sys.refresh_disks_list();
-        let avail_disk = self.sys.get_disks()
-            .into_iter()
-            .map(|d| d.get_mount_point().to_str())
-            .filter(|d| d.is_some())
-            .map(|d| d.unwrap())
-            .collect::<HashSet<&str>>();
-
         if let Some(a) = &arg.arg {
             for disk in a.split(",") {
-                if !avail_disk.contains(disk) {
-                    log::warn!("{} does not seem to be a mount point", disk);
-                } else {
-                    self.disks.push(PathBuf::from(disk));
-                }
+                self.disks.push(PathBuf::from(disk));
             }
         }
 
@@ -51,20 +38,27 @@ impl TimerGenerator for DiskGen {
     }
 
     async fn update(&mut self) -> Result<()> {
+        self.sys.refresh_disks_list();
         self.sys.refresh_disks();
         Ok(())
     }
 
     fn display(&self, _name: &str, arg: &GenArg) -> Result<String> {
         let mut bu = arg.get_builder().new_section();
+        let mut missing = self.disks.len();
+
         for disk in self.sys.get_disks() {
 
             let correct_fs = std::str::from_utf8(disk.get_file_system())
                 .map_or(false, |fs| FS_WHITELIST.contains(&fs));
+
             let our_disk = self.disks.iter().any(|p| p == disk.get_mount_point());
+
             if !correct_fs || !our_disk {
                 continue;
             }
+
+            missing -= 1;
 
             let total = disk.get_total_space();
             let avail = disk.get_available_space();
@@ -75,6 +69,12 @@ impl TimerGenerator for DiskGen {
                 .new_section()
                 .add(perc.to_string())
                 .color_step(perc, LEVELS);
+        }
+
+        for _ in 0..missing {
+            bu = bu.add_not_empty("/")
+                .new_section()
+                .add("xx");
         }
 
         Ok(bu.to_string())
