@@ -161,14 +161,20 @@ impl<'a> DzenBuilder<'a> {
         self.maybe_add(e, s)
     }
 
-    pub fn maybe_add<S>(self, b: bool, s: S) -> Self
-    where S: Into<Cow<'a, str>>
+    pub fn guard<F>(self, b: bool, f: F) -> Self
+    where F: FnOnce(Self) -> Self
     {
         if b {
-            self.add(s)
+            f(self)
         } else {
             self
         }
+    }
+
+    pub fn maybe_add<S>(self, b: bool, s: S) -> Self
+    where S: Into<Cow<'a, str>>
+    {
+        self.guard(b, |sel| sel.add(s))
     }
 
     pub fn rect(self, width: usize, height: usize) -> Self {
