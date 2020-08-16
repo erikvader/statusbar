@@ -37,11 +37,11 @@ fn spawn_dzen(xin: &str, al: &str, x: u16, w: u16) -> tokio::io::Result<ChildTer
         .map(|c| ChildTerminator::new(c))
 }
 
-fn build_side<'a,'b>(
+fn build_side<'a>(
     it: impl Iterator<Item = &'a GenId>,
-    output: &'b HashMap<GenId, String>,
-    sep: &'b str
-) -> DzenBuilder<'b>
+    output: &'a HashMap<GenId, String>,
+    sep: &'a str
+) -> DzenBuilder<'a>
 {
     it.map(|x| output.get(x).unwrap().as_str())
         .filter(|x| !x.is_empty())
