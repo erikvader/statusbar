@@ -4,50 +4,46 @@ use super::bar::BarBuilder as BB;
 use super::bar::GenBuilder as GB;
 use super::tasks::generator::GenType as GT;
 use super::dzen_format::DzenBuilder as DB;
+use super::dzen_format::config::Config;
 
 pub const FIFO_PATH:   &str = "/tmp/statusbar_fifo";
 pub const DZEN_FONT:   &str = "Bitstream Vera Sans:pixelsize=14:antialias=true:hinting=true";
 pub const ICON_PATH:   &str = "~/Documents/statusbar/icons";
 pub const SCRIPT_PATH: &str = "~/Documents/statusbar/scripts";
 
-pub fn theme<S>(c: S) -> Option<&'static str>
-where S: AsRef<str>
-{
-    match c.as_ref() {
-        "fg"         => Some("#dfdfdf"),
-        "bg"         => Some("#333333"),
-        "lightbg"    => Some("#505050"),
-        "urgent"     => Some("#bd2c40"),
-        "hotpink"    => Some("#ff69b4"),
-        "orange"     => Some("#ffb52a"),
-        "yellow2"    => Some("#eeee00"),
-        "blue2"      => Some("#00ace6"),
-        "darkorange" => Some("#ff8c00"),
-        "magenta"    => Some("#ff00ff"),
-        _            => None,
-    }
-}
+lazy_static::lazy_static! {
+    pub static ref THEME: Config<'static> = {
+        let mut h = Config::new();
+        h.color.insert("fg",         "#dfdfdf");
+        h.color.insert("bg",         "#333333");
+        h.color.insert("lightbg",    "#505050");
+        h.color.insert("urgent",     "#bd2c40");
+        h.color.insert("hotpink",    "#ff69b4");
+        h.color.insert("orange",     "#ffb52a");
+        h.color.insert("yellow2",    "#eeee00");
+        h.color.insert("blue2",      "#00ace6");
+        h.color.insert("darkorange", "#ff8c00");
+        h.color.insert("magenta",    "#ff00ff");
 
-pub fn icon_theme<S>(c: S) -> Option<&'static str>
-where S: AsRef<str>
-{
-    match c.as_ref() {
-        "battery"      => Some("kanna"),
-        "volume"       => Some("sonico"),
-        "temperature"  => Some("salamander"),
-        "temperature2" => Some("yoko"),
-        "cpu"          => Some("balzac"),
-        "ram"          => Some("ram"),
-        "time"         => Some("lucy"),
-        "wifi"         => Some("vert"),
-        "netspeed"     => Some("rem"),
-        "disks"        => Some("hinata"),
-        _              => None,
-    }
+        h.icon.insert("battery",     "kanna");
+        h.icon.insert("volume",      "sonico");
+        h.icon.insert("temperature", "salamander");
+        h.icon.insert("cpu",         "balzac");
+        h.icon.insert("ram",         "ram");
+        h.icon.insert("time",        "lucy");
+        h.icon.insert("wifi",        "vert");
+        h.icon.insert("netspeed",    "rem");
+        h.icon.insert("disk",        "miku");
+
+        h
+    };
 }
 
 fn pre_icon(i: &'static str) -> DB<'static> {
-    DB::new().append_icon(i).rpad(3)
+    DB::new()
+        .use_theme(&THEME)
+        .append_icon(i)
+        .rpad(3)
 }
 
 pub fn config() -> bar::Result {

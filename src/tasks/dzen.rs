@@ -18,8 +18,8 @@ use super::Msg;
 const ACC_DUR: Duration = Duration::from_millis(40);
 
 fn spawn_dzen(xin: &str, al: &str, x: u16, w: u16) -> tokio::io::Result<ChildTerminator> {
-    let fg = crate::config::theme("fg").unwrap_or("#ffffff");
-    let bg = crate::config::theme("bg").unwrap_or("#000000");
+    let fg = crate::config::THEME.color.get("fg").unwrap_or(&"#ffffff");
+    let bg = crate::config::THEME.color.get("bg").unwrap_or(&"#000000");
     Command::new("dzen2")
         .kill_on_drop(false)
         .stdin(std::process::Stdio::piped())

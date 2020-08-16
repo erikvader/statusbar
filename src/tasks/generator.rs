@@ -80,7 +80,10 @@ impl GenId {
 
 impl GenArg {
     pub fn get_builder(&self) -> DzenBuilder<'_> {
-        self.prepend.as_ref().map_or_else(|| DzenBuilder::new(), |b| b.clone())
+        self.prepend
+            .as_ref()
+            .map_or_else(|| DzenBuilder::new(), |b| b.clone())
+            .use_theme(&crate::config::THEME)
     }
 
     pub fn empty() -> Self {

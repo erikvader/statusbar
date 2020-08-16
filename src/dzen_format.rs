@@ -1,14 +1,17 @@
 pub mod utils;
 pub mod parser;
 pub mod external;
+pub mod config;
 
 use std::collections::VecDeque;
 use std::ops::{Add,Rem};
 use std::fmt;
 use std::borrow::Cow;
+use config::Config;
 
 #[derive(Clone,PartialEq)]
 pub struct DzenBuilder<'a> {
+    theme: Option<&'a Config<'a>>,
     work: VecDeque<Cow<'a, str>>,
     res: Vec<Cow<'a, str>>
 }
@@ -18,6 +21,7 @@ impl<'a> DzenBuilder<'a> {
     // creation ///////////////////////////////////////////////////////////////
     pub fn new() -> Self {
         DzenBuilder{
+            theme: None,
             work: VecDeque::new(),
             res: Vec::new()
         }
@@ -31,6 +35,11 @@ impl<'a> DzenBuilder<'a> {
 
     pub fn to_stringln(self) -> String {
         self.add("\n").to_string()
+    }
+
+    pub fn use_theme(mut self, theme: &'a Config<'a>) -> Self {
+        self.theme = Some(theme);
+        self
     }
 
     // sections ///////////////////////////////////////////////////////////////
@@ -54,14 +63,14 @@ impl<'a> DzenBuilder<'a> {
     pub fn append_icon<S>(self, icon: S) -> Self
     where S: Into<Cow<'a, str>>
     {
-        let asd = DzenBuilder::icon_strs(icon.into());
+        let asd = self.icon_strs(icon.into());
         asd.into_iter().fold(self, |s, a| s.add(a))
     }
 
     pub fn prepend_icon<S>(self, icon: S) -> Self
     where S: Into<Cow<'a, str>>
     {
-        let asd = DzenBuilder::icon_strs(icon.into());
+        let asd = self.icon_strs(icon.into());
         asd.into_iter().rev().fold(self, |s, a| s.pre(a))
     }
 
@@ -69,7 +78,10 @@ impl<'a> DzenBuilder<'a> {
     where S: Into<Cow<'a, str>>
     {
         let c = color.into();
-        let col = crate::config::theme(c.as_ref()).map_or_else(|| c, |s| Cow::from(s));
+        let col = self.theme
+            .and_then(|m| m.color.get(c.as_ref()))
+            .map_or_else(|| c, |s| Cow::from(*s));
+
         self.add("^fg()")
             .pre(")")
             .pre(col)
@@ -80,7 +92,10 @@ impl<'a> DzenBuilder<'a> {
     where S: Into<Cow<'a, str>>
     {
         let c = color.into();
-        let col = crate::config::theme(c.as_ref()).map_or_else(|| c, |s| Cow::from(s));
+        let col = self.theme
+            .and_then(|m| m.color.get(c.as_ref()))
+            .map_or_else(|| c, |s| Cow::from(*s));
+
         self.add("^bg()")
             .pre(")")
             .pre(col)
@@ -185,8 +200,7 @@ impl<'a> DzenBuilder<'a> {
             .add(")")
     }
 
-    fn icon_strs(icon: Cow<'a, str>) -> Vec<Cow<'a, str>>
-    {
+    fn icon_strs(&self, icon: Cow<'a, str>) -> Vec<Cow<'a, str>> {
         let mut tmp: Vec<Cow<'a, str>> = vec!["^i(".into()];
         let path = crate::config::ICON_PATH;
         if path.starts_with("~") {
@@ -197,11 +211,12 @@ impl<'a> DzenBuilder<'a> {
             tmp.push(path.into());
         }
         tmp.push("/".into());
-        if let Some(i) = crate::config::icon_theme(icon.as_ref()) {
-            tmp.push(Cow::from(i));
-        } else {
-            tmp.push(icon);
-        }
+
+        let ico = self.theme
+            .and_then(|m| m.icon.get(icon.as_ref()))
+            .map_or_else(|| icon, |s| Cow::from(*s));
+        tmp.push(ico);
+
         tmp.push(".xpm".into());
         tmp.push(")".into());
         tmp
