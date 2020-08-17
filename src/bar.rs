@@ -5,6 +5,7 @@ use crate::tasks::generator::*;
 use crate::x;
 use crate::dzen_format::DzenBuilder;
 
+#[derive(Clone)]
 pub struct BarConfig {
     left: Vec<GenId>,
     right: Vec<GenId>,
@@ -75,12 +76,8 @@ impl SetupConfig {
         self.bars.push(bar);
     }
 
-    pub fn get_arg(&self, id: GenId) -> Option<&GenArg> {
-        self.arguments.get(&id)
-    }
-
-    pub fn extract_args(&mut self) -> HashMap<GenId, GenArg> {
-        self.arguments.drain().collect()
+    pub fn get_arg(&self, id: &GenId) -> Option<&GenArg> {
+        self.arguments.get(id)
     }
 
     pub fn get_name(&self, id: GenId) -> Option<&String> {
@@ -91,8 +88,8 @@ impl SetupConfig {
         self.bars.iter().flat_map(|b| b.iter()).unique()
     }
 
-    pub fn take_bars(self) -> Vec<BarConfig> {
-        self.bars
+    pub fn bars(&self) -> &Vec<BarConfig> {
+        &self.bars
     }
 }
 

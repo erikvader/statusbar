@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Clone,PartialEq,Debug)]
+#[derive(Clone,PartialEq,Eq,Debug)]
 pub struct Config<'a> {
     pub color: HashMap<&'a str, &'a str>,
     pub icon:  HashMap<&'a str, &'a str>,

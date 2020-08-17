@@ -12,7 +12,6 @@ use tasks::main_task;
 
 use stderrlog as SL;
 
-// TODO: stoppa in name i GenArg?
 // TODO: få start att acceptera en lista utav GenArgs där alla måste
 // vara likadana förutom prepend som får (borde) vara annorlunda.
 // Borde få en lista utav GenId också? Name borde vara lika på alla.
@@ -22,6 +21,8 @@ use stderrlog as SL;
 // annars identisk generator flera gånger.
 // TODO: använd spawn_local med tanke på att det bara är en thread (basic scheduler)
 // TODO: byt ut named pipe till sockets, eller kanske ha båda?
+// TODO: kunna ändra antalet dzen utan att starta om allting. Typ när
+// en ny skärm kommer in i bilden.
 
 fn main() {
     let reason = {

@@ -59,7 +59,7 @@ pub struct GenId {
     pub id: u8
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq,Eq,Clone)]
 pub struct GenArg {
     pub timeout: Option<u64>,
     pub arg: Option<String>,

@@ -14,7 +14,7 @@ use super::pipo::pipo_reader;
 
 const MPSC_SIZE: usize = 32;
 
-pub async fn main(mut setup: SetupConfig) -> ProcessExitReason {
+pub async fn main(setup: SetupConfig) -> ProcessExitReason {
     let mut tasks = FuturesUnordered::<JoinHandle<ExitReason>>::new();
 
     let mut pipo_map = HashMap::new();
@@ -22,11 +22,10 @@ pub async fn main(mut setup: SetupConfig) -> ProcessExitReason {
     let mut shutdown_pipo = {
         let (broad_send, _) = broadcast::channel(MPSC_SIZE);
 
-        let mut args = setup.extract_args();
         for g in setup.iter() {
             let (pipo_send, pipo_recv) = mpsc::channel(MPSC_SIZE);
             let bs = broad_send.clone();
-            let a = args.remove(g).unwrap_or(GenArg::empty());
+            let a = setup.get_arg(g).cloned().unwrap_or(GenArg::empty());
             let gg = *g;
             let name = setup.get_name(*g).cloned().unwrap_or(g.to_string());
             let name2 = name.clone();
@@ -39,8 +38,8 @@ pub async fn main(mut setup: SetupConfig) -> ProcessExitReason {
             }
         }
 
-        for b in setup.take_bars().into_iter() {
-            tasks.push(tokio::spawn(dzen_printer(broad_send.subscribe(), b)));
+        for b in setup.bars() {
+            tasks.push(tokio::spawn(dzen_printer(broad_send.subscribe(), b.clone())));
         }
 
         Some({

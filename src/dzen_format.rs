@@ -9,7 +9,7 @@ use std::fmt;
 use std::borrow::Cow;
 use config::Config;
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone,PartialEq,Eq)]
 pub struct DzenBuilder<'a> {
     theme: Option<&'a Config<'a>>,
     work: VecDeque<Cow<'a, str>>,
