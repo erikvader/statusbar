@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap,HashSet};
 use itertools::Itertools;
 
 use crate::tasks::generator::*;
 use crate::x;
 use crate::dzen_format::DzenBuilder;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct BarConfig {
     left: Vec<GenId>,
     right: Vec<GenId>,
@@ -19,11 +19,60 @@ pub struct BarConfig {
     rect: x::Rectangle,
 }
 
+#[derive(Debug)]
 pub struct SetupConfig {
     arguments: HashMap<GenId, GenArg>,
     names: HashMap<GenId, String>,
     bars: Vec<BarConfig>,
     id: u8
+}
+
+#[derive(Debug)]
+pub struct SetupDiff<'a> {
+    pub bar_minus: Vec<&'a BarConfig>,
+    pub bar_plus:  Vec<&'a BarConfig>,
+    pub gen_minus: Vec<GenId>,
+    pub gen_plus:  Vec<GenId>,
+}
+
+impl std::fmt::Display for SetupConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let print_gen_id = |id: GenId, f: &mut std::fmt::Formatter<'_>| -> std::fmt::Result {
+            write!(f, "{:<4}{:?}({})\n", "", id.gen_type(), id.to_string())?;
+
+            if let Some(arg) = self.get_arg(&id) {
+                if let Some(timeout) = arg.timeout {
+                    write!(f, "{:<6}timeout={}\n", "", timeout)?;
+                }
+                if let Some(argument) = &arg.arg {
+                    write!(f, "{:<6}arg={}\n", "", argument)?;
+                }
+                if let Some(pre) = &arg.prepend {
+                    write!(f, "{:<6}prepend={}\n", "", pre.to_string())?;
+                }
+            }
+
+            if let Some(name) = self.get_name(id) {
+                write!(f, "{:<6}name={}\n", "", name)?;
+            }
+
+            Ok(())
+        };
+
+        for b in &self.bars {
+            write!(f, "{}\n", b.output)?;
+
+            write!(f, "{:<2}left:\n", "")?;
+            for l in &b.left {
+                print_gen_id(*l, f)?;
+            }
+            write!(f, "{:<2}right:\n", "")?;
+            for r in &b.right {
+                print_gen_id(*r, f)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl SetupConfig {
@@ -37,35 +86,91 @@ impl SetupConfig {
         }
     }
 
-    fn create_module(&mut self, gen: GenType, arg: Option<GenArg>, name: Option<String>) -> GenId {
-        if let Some(id) = self.module_exists(gen, &arg, &name) {
-            return id;
-        }
+    pub fn diff<'a>(&'a self, new: &'a Self) -> SetupDiff<'a> {
+        let my_ids:  HashSet<GenId> = self.iter().copied().collect();
+        let new_ids: HashSet<GenId> =  new.iter().copied().collect();
 
-        if arg.is_some() || name.is_some() {
-            let id = GenId::new(gen, self.id);
-            self.id += 1;
-            if let Some(a) = arg {
-                self.arguments.insert(id, a);
-            }
-            if let Some(s) = name {
-                self.name_module(id, s);
-            }
-            id
-        } else {
-            GenId::from_gen(gen)
+        let gen_minus = (&my_ids - &new_ids).iter().copied().collect();
+        let gen_plus  = (&new_ids - &my_ids).iter().copied().collect();
+
+        let my_outputs:  HashSet<&String> = self.bars.iter().map(|b| &b.output).collect();
+        let new_outputs: HashSet<&String> =  new.bars.iter().map(|b| &b.output).collect();
+
+        let bar_minus = (&my_outputs - &new_outputs).iter().map(|o| self.bar_from_output(o).unwrap()).collect();
+        let bar_plus  = (&new_outputs - &my_outputs).iter().map(|o|  new.bar_from_output(o).unwrap()).collect();
+
+        SetupDiff {
+            bar_minus: bar_minus,
+            bar_plus: bar_plus,
+            gen_minus: gen_minus,
+            gen_plus: gen_plus,
         }
     }
 
-    fn module_exists(&self, gen: GenType, arg: &Option<GenArg>, name: &Option<String>) -> Option<GenId> {
+    fn create_module(
+        &mut self,
+        gen: GenType,
+        arg: Option<GenArg>,
+        name: Option<String>,
+        prev: Option<&SetupConfig>
+    ) -> GenId
+    {
+        let id = if let Some(id) = self.module_exists(gen, &arg, &name, prev) {
+            id
+        } else if arg.is_some() || name.is_some() {
+            loop {
+                let id = GenId::new(gen, self.id);
+                self.id += 1;
+                if let Some(p) = prev {
+                    if p.uses_id(id) {
+                        continue
+                    }
+                }
+                break id
+            }
+        } else {
+            GenId::from_gen(gen)
+        };
+
+        if let Some(a) = arg {
+            self.arguments.insert(id, a);
+        }
+
+        if let Some(s) = name {
+            self.name_module(id, s);
+        }
+
+        id
+    }
+
+    fn module_exists(
+        &self,
+        gen: GenType,
+        arg: &Option<GenArg>,
+        name: &Option<String>,
+        prev: Option<&SetupConfig>
+    ) -> Option<GenId>
+    {
         for b in self.bars.iter() {
             for g in b.iter() {
-                if g.gen == gen && self.names.get(g) == name.as_ref() && self.arguments.get(g) == arg.as_ref() {
+                if g.gen_type() == gen
+                    && self.names.get(g) == name.as_ref()
+                    && self.arguments.get(g) == arg.as_ref()
+                {
                     return Some(*g);
                 }
             }
         }
-        None
+        prev.and_then(|p| p.module_exists(gen, arg, name, None))
+    }
+
+    fn uses_id(&self, id: GenId) -> bool {
+        for g in self.iter() {
+            if *g == id {
+                return true;
+            }
+        }
+        return false;
     }
 
     pub fn name_module(&mut self, id: GenId, name: String) {
@@ -82,6 +187,15 @@ impl SetupConfig {
 
     pub fn get_name(&self, id: GenId) -> Option<&String> {
         self.names.get(&id)
+    }
+
+    pub fn bar_from_output(&self, output: &str) -> Option<&BarConfig> {
+        for b in &self.bars {
+            if b.output == output {
+                return Some(&b);
+            }
+        }
+        None
     }
 
     pub fn iter(&self) -> impl Iterator<Item=&GenId> {
@@ -234,9 +348,7 @@ impl SetupBuilder {
         self
     }
 
-    pub fn build(mut self) -> Result {
-        let xsetup = x::get_x_setup()?;
-
+    pub fn build_custom(mut self, xsetup: x::XSetup, prev: Option<&SetupConfig>) -> Result {
         // TODO: handle mirroring of screens
         if let Some(f) = self.map_other {
             let used: Vec<_> = self.bars.iter()
@@ -267,15 +379,30 @@ impl SetupBuilder {
                 bar.split = split;
             }
 
-            SetupBuilder::build_side(b.left, &mut setup, |id| bar.add_left(id));
-            SetupBuilder::build_side(b.right, &mut setup, |id| bar.add_right(id));
+            SetupBuilder::build_side(b.left, &mut setup, |id| bar.add_left(id), prev);
+            SetupBuilder::build_side(b.right, &mut setup, |id| bar.add_right(id), prev);
             setup.add_bar(bar);
         }
 
         Ok(setup)
     }
 
-    fn build_side<F>(gens: Vec<GenBuilder>, setup: &mut SetupConfig, mut bar_add: F)
+    pub fn build(self) -> Result {
+        let xsetup = x::get_x_setup()?;
+        self.build_custom(xsetup, None)
+    }
+
+    pub fn build_prev(self, prev: &SetupConfig) -> Result {
+        let xsetup = x::get_x_setup()?;
+        self.build_custom(xsetup, Some(prev))
+    }
+
+    fn build_side<F>(
+        gens: Vec<GenBuilder>,
+        setup: &mut SetupConfig,
+        mut bar_add: F,
+        prev: Option<&SetupConfig>
+    )
     where F: FnMut(GenId)
     {
         for l in gens.into_iter() {
@@ -284,7 +411,7 @@ impl SetupBuilder {
             } else {
                 Some(GenArg{timeout: l.timeout, arg: l.arg, prepend: l.prepend})
             };
-            let id = setup.create_module(l.typ, args, l.name);
+            let id = setup.create_module(l.typ, args, l.name, prev);
             bar_add(id);
         }
 

@@ -55,11 +55,11 @@ pub enum GenType {
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash,Debug)]
 pub struct GenId {
-    pub gen: GenType,
-    pub id: u8
+    gen: GenType,
+    id: u8
 }
 
-#[derive(PartialEq,Eq,Clone)]
+#[derive(PartialEq,Eq,Clone,Debug)]
 pub struct GenArg {
     pub timeout: Option<u64>,
     pub arg: Option<String>,
@@ -75,6 +75,9 @@ impl GenId {
     }
     pub fn to_string(&self) -> String {
         self.id.to_string()
+    }
+    pub fn gen_type(&self) -> GenType {
+        self.gen
     }
 }
 

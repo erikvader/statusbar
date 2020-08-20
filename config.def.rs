@@ -1,4 +1,3 @@
-use super::bar;
 use super::bar::SetupBuilder as SB;
 use super::bar::BarBuilder as BB;
 use super::bar::GenBuilder as GB;
@@ -46,7 +45,7 @@ fn pre_icon(i: &'static str) -> DB<'static> {
         .rpad(3)
 }
 
-pub fn config() -> bar::Result {
+pub fn config() -> SB {
     SB::new()
         .add_bar(BB::new("DisplayPort-0")
                  .add_left(GB::new(GT::ECHO)
@@ -90,5 +89,4 @@ pub fn config() -> bar::Result {
                    .rpad(5)
                    .colorize("white")
                    .to_string())
-        .build()
 }

@@ -35,7 +35,7 @@ fn main() {
             .init()
             .expect("couldn't start logger");
 
-        let setup = config::config().unwrap();
+        let setup = config::config().build().unwrap();
 
         // NOTE: explicitly creating and shutting down a runtime like this
         // is required because of https://github.com/tokio-rs/tokio/issues/2318

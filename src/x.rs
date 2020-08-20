@@ -24,6 +24,10 @@ impl XSetup {
     pub fn outputs(&self) -> impl Iterator<Item = &str> {
         self.outputs.iter().map(|(o, _, _)| o.as_str())
     }
+
+    pub fn new(outputs: Vec<(String, usize, Rectangle)>) -> Self {
+        XSetup{outputs: outputs}
+    }
 }
 
 pub fn get_x_setup() -> Result<XSetup, Box<dyn std::error::Error>> {
@@ -57,5 +61,5 @@ pub fn get_x_setup() -> Result<XSetup, Box<dyn std::error::Error>> {
         .map(|(name, rect)| (name, find_xinerama(rect), rect))
         .collect();
 
-    Ok(XSetup{outputs})
+    Ok(XSetup::new(outputs))
 }
