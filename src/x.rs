@@ -1,6 +1,6 @@
 use x11rb::connection::Connection;
-use x11rb::generated::randr::{get_screen_resources, get_output_info, get_crtc_info};
-use x11rb::generated::xinerama::query_screens;
+use x11rb::protocol::randr::{get_screen_resources, get_output_info, get_crtc_info};
+use x11rb::protocol::xinerama::query_screens;
 
 pub type Rectangle = (i16, i16, u16, u16);
 pub struct XSetup {
