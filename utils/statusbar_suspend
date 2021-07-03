@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Force update the time module in statusbar
+
+case $1 in
+    post)
+        sudo -u M4USER M4FIFOECHO /tmp/statusbar_fifo time update
+        ;;
+esac

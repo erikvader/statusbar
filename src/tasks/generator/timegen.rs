@@ -72,6 +72,8 @@ impl TimerGenerator for TimeGen {
                 self.timer = Some(Timer {start: n, now: n});
             }
             return Ok(true);
+        } else if msg == "update" {
+            return Ok(true);
         }
         Ok(false)
     }
