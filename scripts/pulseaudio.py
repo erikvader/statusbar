@@ -4,6 +4,7 @@ import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
 import os
+import sys
 from time import sleep
 from dataclasses import dataclass
 
@@ -61,6 +62,12 @@ def get_volume(core):
     )
     return volume_perc(volumes)
 
+def get_name(core):
+    return core.Get(
+        "org.PulseAudio.Core1.Device",
+        "Name",
+        dbus_interface="org.freedesktop.DBus.Properties",
+    )
 
 def print_states(states):
     def to_dzen(s):
@@ -83,6 +90,13 @@ class SinkState:
 
 
 def main():
+    # Only show sinks with the given names.
+    # Find names with: pactl list short sinks
+    if len(sys.argv) >= 2:
+        sink_filter = set(sys.argv[1:])
+    else:
+        sink_filter = None
+
     DBusGMainLoop(set_as_default=True)
     conn = connect()
     core = conn.get_object("org.pulseaudio.Server", "/org/pulseaudio/core1")
@@ -90,7 +104,8 @@ def main():
     states = {}
     for path in find_sinks(core):
         obj = conn.get_object("org.pulseaudio.Server", path)
-        states[path] = SinkState.from_sink(obj)
+        if sink_filter is None or get_name(obj) in sink_filter:
+            states[path] = SinkState.from_sink(obj)
 
     print_states(states)
 
