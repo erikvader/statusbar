@@ -1,10 +1,12 @@
 use x11rb::connection::Connection;
-use x11rb::protocol::randr::{get_screen_resources, get_output_info, get_crtc_info};
+use x11rb::protocol::randr::{get_screen_resources, get_output_info, get_crtc_info, get_output_primary};
 use x11rb::protocol::xinerama::query_screens;
 
 pub type Rectangle = (i16, i16, u16, u16);
 pub struct XSetup {
-    outputs: Vec<(String, usize, Rectangle)>
+    outputs: Vec<(String, usize, Rectangle)>,
+    #[allow(dead_code)]
+    primary: Option<usize>, // index in `outputs` to the primary output
 }
 
 impl XSetup {
@@ -25,14 +27,18 @@ impl XSetup {
         self.outputs.iter().map(|(o, _, _)| o.as_str())
     }
 
-    pub fn new(outputs: Vec<(String, usize, Rectangle)>) -> Self {
-        XSetup{outputs: outputs}
+    pub fn new(outputs: Vec<(String, usize, Rectangle)>, primary: Option<usize>) -> Self {
+        XSetup{outputs: outputs, primary: primary}
     }
 }
 
 pub fn get_x_setup() -> Result<XSetup, Box<dyn std::error::Error>> {
     let (conn, screen_num) = x11rb::connect(None)?;
     let root = conn.setup().roots[screen_num].root;
+
+    // find primary output
+    let primary_output = get_output_primary(&conn, root)?.reply()?.output;
+    let mut primary_index = None;
 
     // query X for (output_name, rect)
     let mut crtc_rect = Vec::new();
@@ -46,6 +52,10 @@ pub fn get_x_setup() -> Result<XSetup, Box<dyn std::error::Error>> {
         let name = String::from_utf8(out_info.name)?;
         let info = get_crtc_info(&conn, crtc, res.config_timestamp)?.reply()?;
         crtc_rect.push((name, (info.x, info.y, info.width, info.height)));
+
+        if primary_output != 0 && primary_output == o {
+            primary_index = Some(crtc_rect.len()-1);
+        }
     }
 
     // query xinerama for (xinerama_index, rect)
@@ -61,5 +71,5 @@ pub fn get_x_setup() -> Result<XSetup, Box<dyn std::error::Error>> {
         .map(|(name, rect)| (name, find_xinerama(rect), rect))
         .collect();
 
-    Ok(XSetup::new(outputs))
+    Ok(XSetup::new(outputs, primary_index))
 }
