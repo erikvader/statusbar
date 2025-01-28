@@ -3,8 +3,7 @@ SYSDHOOK := statusbar_suspend_$(USER)
 
 .PHONY: all
 all: $(CONF)
-	cargo build --release
-	mv target/release/statusbar .
+	cargo install --path .
 
 $(CONF):
 	cp config.def.rs $(CONF)
@@ -12,7 +11,6 @@ $(CONF):
 .PHONY: clean
 clean:
 	cargo clean
-	rm -f statusbar
 
 .PHONY: install-systemd
 install-systemd:
